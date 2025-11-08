@@ -1,0 +1,2511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChromaKey Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <style>
+        :root {
+            --primary: #0d6efd;
+            --success: #198754;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --dark: #121212;
+            --darker: #0a0a0a;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--darker);
+            color: var(--light);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .workspace {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            background: var(--dark);
+        }
+
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        #templateCanvas, #photoCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        #templateCanvas {
+            z-index: 2;
+        }
+
+        #photoCanvas {
+            z-index: 1;
+        }
+
+        .controls-panel {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--light);
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .btn-icon:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .btn-icon.active {
+            background: var(--primary);
+        }
+
+        .btn-icon.success {
+            background: var(--success);
+        }
+
+        .btn-icon.danger {
+            background: var(--danger);
+        }
+
+        .btn-icon.warning {
+            background: var(--warning);
+            color: var(--dark);
+        }
+
+        .btn-icon.gif {
+            background: linear-gradient(135deg, #9c27b0, #673ab7);
+        }
+
+        .btn-text {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            border: none;
+            background: linear-gradient(135deg, #e91e63, #9c27b0);
+            color: var(--light);
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            padding: 0 15px;
+            white-space: nowrap;
+        }
+
+        .btn-text:hover {
+            background: linear-gradient(135deg, #d81b60, #8e24aa);
+            transform: translateY(-1px);
+        }
+
+        .sidebar {
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            background: var(--dark);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .area-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            border-left: 3px solid var(--success);
+        }
+
+        .area-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .area-id {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--success);
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+
+        .area-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-row label {
+            font-size: 0.8rem;
+            min-width: 40px;
+            color: var(--gray);
+        }
+
+        .control-row input {
+            flex: 1;
+        }
+
+        .camera-preview-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .webcam-preview {
+            position: relative;
+            width: 100%;
+            margin-top: 0.5rem;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        #webcamVideo {
+            width: 100%;
+            display: block;
+        }
+
+        #captureOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .dimension-box {
+            position: absolute;
+            border: 2px solid var(--warning);
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+        }
+
+        .dimension-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: var(--warning);
+            color: var(--dark);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .status-bar {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+            color: var(--gray);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .color-picker {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        #chromaColor {
+            width: 40px;
+            height: 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .slider-container label {
+            font-size: 0.8rem;
+            min-width: 100px;
+            color: var(--gray);
+        }
+
+        .slider-container input {
+            flex: 1;
+        }
+
+        .value-display {
+            min-width: 30px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        /* Modal Styles */
+        .modal-content {
+            background: var(--dark);
+            color: var(--light);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .cropper-container {
+            max-height: 60vh;
+            margin-bottom: 1rem;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .tooltip-inner {
+            background: var(--dark);
+            color: var(--light);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tooltip.bs-tooltip-top .tooltip-arrow::before {
+            border-top-color: var(--dark);
+        }
+
+        .section-title {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-bottom: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--gray);
+        }
+
+        .empty-state i {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.5;
+        }
+        
+        .quality-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .quality-option {
+            flex: 1;
+            min-width: 80px;
+        }
+        
+        .gif-preview {
+            max-width: 100%;
+            max-height: 200px;
+            margin: 0 auto;
+            display: block;
+            border-radius: 6px;
+        }
+        
+        /* Movable Camera Preview */
+        .movable-preview-container {
+            position: fixed;
+            top: 100px;
+            left: 100px;
+            width: 450px;
+            z-index: 1000;
+            background: var(--dark);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            display: none;
+        }
+        
+        .preview-header {
+            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .preview-title {
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        
+        .preview-controls {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .preview-btn {
+            background: none;
+            border: none;
+            color: var(--light);
+            font-size: 0.8rem;
+            cursor: pointer;
+            padding: 3px 6px;
+            border-radius: 4px;
+        }
+        
+        .preview-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .preview-content {
+            padding: 15px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .countdown-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 5rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+            display: none;
+            transition: color 0.3s;
+        }
+        
+        .countdown-message {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+            display: none;
+            text-align: center;
+            width: 100%;
+        }
+        
+        .photo-captured {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            font-weight: bold;
+            color: #4caf50;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+            display: none;
+            text-align: center;
+            width: 100%;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 1200px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: 40%;
+            }
+            
+            .workspace {
+                height: 60%;
+            }
+            
+            .movable-preview-container {
+                width: 400px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .controls-panel {
+                justify-content: center;
+            }
+            
+            .movable-preview-container {
+                width: 350px;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+            
+            .btn-text {
+                font-size: 0.8rem;
+                padding: 0 10px;
+            }
+            
+            .camera-preview-section {
+                max-height: 300px;
+                overflow-y: auto;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .movable-preview-container {
+                width: 320px;
+            }
+            
+            .countdown-display {
+                font-size: 4rem;
+            }
+            
+            .countdown-message {
+                font-size: 1.2rem;
+            }
+            
+            .photo-captured {
+                font-size: 1.5rem;
+            }
+        }
+        
+        .delete-photo-btn {
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .delete-photo-btn:hover {
+            background: #c82333;
+        }
+        
+        .reset-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .reset-buttons .btn-icon {
+            flex: 1;
+        }
+        
+        .idle-settings {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .idle-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="main-content">
+            <div class="workspace">
+                <div class="canvas-container">
+                    <canvas id="photoCanvas"></canvas>
+                    <canvas id="templateCanvas"></canvas>
+                </div>
+                
+                <div class="controls-panel">
+                    <button class="btn-icon" id="loadImageBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Load Template">
+                        <i class="bi bi-folder-plus"></i>
+                    </button>
+                    <input type="file" id="imageInput" accept="image/*" class="d-none">
+                    
+                    <button class="btn-icon" id="detectAreasBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Detect Areas">
+                        <i class="bi bi-magic"></i>
+                    </button>
+                    
+                    <div class="color-picker">
+                        <input type="color" id="chromaColor" value="#00ff00" data-bs-toggle="tooltip" data-bs-placement="top" title="Chroma Key Color">
+                    </div>
+                    
+                    <button class="btn-icon success" id="startCameraBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Start Camera">
+                        <i class="bi bi-camera-video"></i>
+                    </button>
+                    
+                    <button class="btn-icon warning" id="captureBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Capture Photo">
+                        <i class="bi bi-camera"></i>
+                    </button>
+                    
+                    <button class="btn-text" id="autoCaptureBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Auto Capture Sequence">
+                        Auto Capture
+                    </button>
+                    
+                    <button class="btn-icon" id="exportBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Export Result">
+                        <i class="bi bi-download"></i>
+                    </button>
+                    
+                    <button class="btn-icon gif" id="createGifBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Create GIF">
+                        <i class="bi bi-file-earmark-image"></i>
+                    </button>
+                    
+                    <button class="btn-icon" id="cameraSettingsBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Camera Settings">
+                        <i class="bi bi-gear"></i>
+                    </button>
+                    
+                    <button class="btn-icon" id="togglePreviewBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Show Preview on Second Screen">
+                        <i class="bi bi-arrows-move"></i>
+                    </button>
+                    
+                    <div class="reset-buttons">
+                        <button class="btn-icon danger" id="resetCanvasBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Reset Canvas">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                        <button class="btn-icon danger" id="resetAppBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Reset App">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h6 class="mb-0">Camera Preview & Controls</h6>
+                </div>
+                
+                <div class="sidebar-content">
+                    <div class="camera-preview-section">
+                        <div class="webcam-preview">
+                            <video id="webcamVideo" autoplay playsinline class="d-none"></video>
+                            <canvas id="captureOverlay" class="d-none"></canvas>
+                            <div class="countdown-message" id="countdownMessage"></div>
+                            <div class="countdown-display" id="countdownDisplay"></div>
+                            <div class="photo-captured" id="photoCaptured">Photo Captured!</div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <div class="section-title">Auto Capture Settings</div>
+                            <div class="mb-2">
+                                <div class="idle-toggle">
+                                    <label class="form-check-label" for="enableIdle">Enable Idle Time</label>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="enableIdle" checked>
+                                    </div>
+                                </div>
+                                <div class="idle-settings" id="idleSettings">
+                                    <label class="form-label">Idle Time (seconds)</label>
+                                    <input type="number" class="form-control" id="idleTime" value="10" min="3" max="30">
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label">Countdown Time (seconds)</label>
+                                <input type="number" class="form-control" id="countdownTime" value="3" min="1" max="10">
+                            </div>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="mirrorPreview">
+                                <label class="form-check-label" for="mirrorPreview">Mirror Preview</label>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-primary btn-sm" id="startAutoCaptureBtn">Start Auto Capture</button>
+                                <button class="btn btn-danger btn-sm" id="stopAutoCaptureBtn">Stop Auto Capture</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="section-title">Detected Areas</div>
+                    <div id="resultsCount" class="mb-2">0 areas detected</div>
+                    <div id="detectionResults">
+                        <div class="empty-state">
+                            <i class="bi bi-border-style"></i>
+                            <p>No areas detected</p>
+                            <small>Load a template and detect areas to get started</small>
+                        </div>
+                    </div>
+                    
+                    <div class="section-title">Detection Settings</div>
+                    <div class="slider-container">
+                        <label for="tolerance">Tolerance:</label>
+                        <input type="range" class="form-range" id="tolerance" min="0" max="100" value="20">
+                        <span id="toleranceValue" class="value-display">20</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label for="minArea">Min Area:</label>
+                        <input type="range" class="form-range" id="minArea" min="100" max="5000" value="500" step="100">
+                        <span id="minAreaValue" class="value-display">500</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label for="feathering">Feathering:</label>
+                        <input type="range" class="form-range" id="feathering" min="0" max="10" value="2">
+                        <span id="featheringValue" class="value-display">2</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status-bar">
+            <span id="statusText">Ready to load template</span>
+        </div>
+    </div>
+
+    <!-- Movable Camera Preview -->
+    <div class="movable-preview-container" id="movablePreview">
+        <div class="preview-header">
+            <div class="preview-title">Camera Preview</div>
+            <div class="preview-controls">
+                <button class="preview-btn" id="closePreviewBtn">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+        <div class="preview-content">
+            <div class="webcam-preview">
+                <video id="movableWebcamVideo" autoplay playsinline class="d-none"></video>
+                <canvas id="movableCaptureOverlay" class="d-none"></canvas>
+                <div class="countdown-message" id="movableCountdownMessage"></div>
+                <div class="countdown-display" id="movableCountdownDisplay"></div>
+                <div class="photo-captured" id="movablePhotoCaptured">Photo Captured!</div>
+            </div>
+            <div class="mt-3">
+                <div class="section-title">Auto Capture Settings</div>
+                <div class="mb-2">
+                    <div class="idle-toggle">
+                        <label class="form-check-label" for="movableEnableIdle">Enable Idle Time</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="movableEnableIdle" checked>
+                        </div>
+                    </div>
+                    <div class="idle-settings" id="movableIdleSettings">
+                        <label class="form-label">Idle Time (seconds)</label>
+                        <input type="number" class="form-control" id="movableIdleTime" value="10" min="3" max="30">
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Countdown Time (seconds)</label>
+                    <input type="number" class="form-control" id="movableCountdownTime" value="3" min="1" max="10">
+                </div>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" id="movableMirrorPreview">
+                    <label class="form-check-label" for="movableMirrorPreview">Mirror Preview</label>
+                </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-primary btn-sm" id="movableStartAutoCaptureBtn">Start Auto Capture</button>
+                    <button class="btn btn-danger btn-sm" id="movableStopAutoCaptureBtn">Stop Auto Capture</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Crop Modal -->
+    <div class="modal fade" id="cropModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Crop Image for Area <span id="cropAreaId"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="cropper-container">
+                        <img id="cropImage" src="" alt="Image to crop">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="applyCrop">Apply Crop</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal fade" id="exportModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Export Image</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="exportFileName" class="form-label">File Name</label>
+                        <input type="text" class="form-control" id="exportFileName" value="chroma-key-result">
+                    </div>
+                    <div class="mb-3">
+                        <label for="exportDPI" class="form-label">Quality (DPI)</label>
+                        <select class="form-select" id="exportDPI">
+                            <option value="300">300 DPI (High Quality)</option>
+                            <option value="600" selected>600 DPI (Excellent)</option>
+                            <option value="1200">1200 DPI (Ultra Sharp)</option>
+                            <option value="2400">2400 DPI (Print Ready)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Export Quality</label>
+                        <div class="quality-options">
+                            <button type="button" class="btn btn-outline-primary quality-option active" data-quality="1.0">Best</button>
+                            <button type="button" class="btn btn-outline-primary quality-option" data-quality="0.95">High</button>
+                            <button type="button" class="btn btn-outline-primary quality-option" data-quality="0.9">Good</button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="exportLocation" class="form-label">Save Location</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="exportLocation" placeholder="Choose folder..." readonly>
+                            <button class="btn btn-outline-secondary" type="button" id="browseExportLocation">Browse</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmExport">Export</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GIF Export Modal -->
+    <div class="modal fade" id="gifExportModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create GIF Slideshow</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="gifFileName" class="form-label">File Name</label>
+                        <input type="text" class="form-control" id="gifFileName" value="photo-slideshow">
+                    </div>
+                    <div class="mb-3">
+                        <label for="gifFrameDuration" class="form-label">Frame Duration (ms)</label>
+                        <input type="number" class="form-control" id="gifFrameDuration" value="1000" min="100" max="5000">
+                        <div class="form-text">Each photo will be displayed for this duration (1000ms = 1 second)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="gifQuality" class="form-label">GIF Quality</label>
+                        <select class="form-select" id="gifQuality">
+                            <option value="1">Ultra High (Slow)</option>
+                            <option value="5" selected>High Quality</option>
+                            <option value="10">Balanced</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">GIF Dimensions</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="gifWidth" placeholder="Width" value="800">
+                            <span class="input-group-text">×</span>
+                            <input type="number" class="form-control" id="gifHeight" placeholder="Height" value="600">
+                        </div>
+                        <div class="form-text">Larger dimensions = better quality but larger file size</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="gifLocation" class="form-label">Save Location</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="gifLocation" placeholder="Choose folder..." readonly>
+                            <button class="btn btn-outline-secondary" type="button" id="browseGifLocation">Browse</button>
+                        </div>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        The GIF will include all photos currently placed in the template, using their current cropping and scaling.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmGifExport">Create GIF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera Settings Modal -->
+    <div class="modal fade" id="cameraSettingsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Camera Settings</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="cameraSelect" class="form-label">Camera</label>
+                        <select class="form-select" id="cameraSelect">
+                            <option value="">Select Camera</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="resolutionSelect" class="form-label">Resolution</label>
+                        <select class="form-select" id="resolutionSelect">
+                            <option value="640x480">640 × 480</option>
+                            <option value="1280x720" selected>1280 × 720 (HD)</option>
+                            <option value="1920x1080">1920 × 1080 (Full HD)</option>
+                        </select>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="mirrorCamera">
+                        <label class="form-check-label" for="mirrorCamera">Mirror Camera</label>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Auto Capture Settings</label>
+                        <div class="mb-2">
+                            <div class="idle-toggle">
+                                <label class="form-check-label" for="settingsEnableIdle">Enable Idle Time</label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="settingsEnableIdle" checked>
+                                </div>
+                            </div>
+                            <div class="idle-settings" id="settingsIdleSettings">
+                                <div class="input-group mb-2">
+                                    <span class="input-group-text">Idle Time</span>
+                                    <input type="number" class="form-control" id="settingsIdleTime" value="10" min="3" max="30">
+                                    <span class="input-group-text">seconds</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text">Countdown</span>
+                            <input type="number" class="form-control" id="settingsCountdownTime" value="3" min="1" max="10">
+                            <span class="input-group-text">seconds</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveCameraSettings">Save Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p id="loadingText">Processing high-quality export...</p>
+        <small class="text-muted">This may take a moment</small>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    
+    <!-- Include gif.js library -->
+    <script src="gif.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize tooltips
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // DOM elements
+            const imageInput = document.getElementById('imageInput');
+            const loadImageBtn = document.getElementById('loadImageBtn');
+            const detectAreasBtn = document.getElementById('detectAreasBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const createGifBtn = document.getElementById('createGifBtn');
+            const autoCaptureBtn = document.getElementById('autoCaptureBtn');
+            const cameraSettingsBtn = document.getElementById('cameraSettingsBtn');
+            const togglePreviewBtn = document.getElementById('togglePreviewBtn');
+            const resetCanvasBtn = document.getElementById('resetCanvasBtn');
+            const resetAppBtn = document.getElementById('resetAppBtn');
+            const templateCanvas = document.getElementById('templateCanvas');
+            const templateCtx = templateCanvas.getContext('2d', { willReadFrequently: true });
+            const photoCanvas = document.getElementById('photoCanvas');
+            const photoCtx = photoCanvas.getContext('2d', { willReadFrequently: true });
+            const statusText = document.getElementById('statusText');
+            const resultsCount = document.getElementById('resultsCount');
+            const detectionResults = document.getElementById('detectionResults');
+            const chromaColor = document.getElementById('chromaColor');
+            const toleranceSlider = document.getElementById('tolerance');
+            const toleranceValue = document.getElementById('toleranceValue');
+            const minAreaSlider = document.getElementById('minArea');
+            const minAreaValue = document.getElementById('minAreaValue');
+            const featheringSlider = document.getElementById('feathering');
+            const featheringValue = document.getElementById('featheringValue');
+            const startCameraBtn = document.getElementById('startCameraBtn');
+            const captureBtn = document.getElementById('captureBtn');
+            const webcamVideo = document.getElementById('webcamVideo');
+            const captureOverlay = document.getElementById('captureOverlay');
+            const captureOverlayCtx = captureOverlay.getContext('2d');
+            const countdownMessage = document.getElementById('countdownMessage');
+            const countdownDisplay = document.getElementById('countdownDisplay');
+            const photoCaptured = document.getElementById('photoCaptured');
+            
+            // Auto capture settings
+            const enableIdle = document.getElementById('enableIdle');
+            const idleSettings = document.getElementById('idleSettings');
+            const idleTimeInput = document.getElementById('idleTime');
+            const countdownTimeInput = document.getElementById('countdownTime');
+            const mirrorPreviewCheckbox = document.getElementById('mirrorPreview');
+            const startAutoCaptureBtn = document.getElementById('startAutoCaptureBtn');
+            const stopAutoCaptureBtn = document.getElementById('stopAutoCaptureBtn');
+            
+            // Movable preview elements
+            const movablePreview = document.getElementById('movablePreview');
+            const movableWebcamVideo = document.getElementById('movableWebcamVideo');
+            const movableCaptureOverlay = document.getElementById('movableCaptureOverlay');
+            const movableCaptureOverlayCtx = movableCaptureOverlay.getContext('2d');
+            const movableCountdownMessage = document.getElementById('movableCountdownMessage');
+            const movableCountdownDisplay = document.getElementById('movableCountdownDisplay');
+            const movablePhotoCaptured = document.getElementById('movablePhotoCaptured');
+            const closePreviewBtn = document.getElementById('closePreviewBtn');
+            const movableEnableIdle = document.getElementById('movableEnableIdle');
+            const movableIdleSettings = document.getElementById('movableIdleSettings');
+            const movableIdleTimeInput = document.getElementById('movableIdleTime');
+            const movableCountdownTimeInput = document.getElementById('movableCountdownTime');
+            const movableMirrorPreviewCheckbox = document.getElementById('movableMirrorPreview');
+            const movableStartAutoCaptureBtn = document.getElementById('movableStartAutoCaptureBtn');
+            const movableStopAutoCaptureBtn = document.getElementById('movableStopAutoCaptureBtn');
+            
+            // Modal elements
+            const cropModal = new bootstrap.Modal(document.getElementById('cropModal'));
+            const cropImage = document.getElementById('cropImage');
+            const cropAreaId = document.getElementById('cropAreaId');
+            const applyCrop = document.getElementById('applyCrop');
+            const exportModal = new bootstrap.Modal(document.getElementById('exportModal'));
+            const exportFileName = document.getElementById('exportFileName');
+            const exportDPI = document.getElementById('exportDPI');
+            const exportLocation = document.getElementById('exportLocation');
+            const browseExportLocation = document.getElementById('browseExportLocation');
+            const confirmExport = document.getElementById('confirmExport');
+            const gifExportModal = new bootstrap.Modal(document.getElementById('gifExportModal'));
+            const gifFileName = document.getElementById('gifFileName');
+            const gifFrameDuration = document.getElementById('gifFrameDuration');
+            const gifQuality = document.getElementById('gifQuality');
+            const gifWidth = document.getElementById('gifWidth');
+            const gifHeight = document.getElementById('gifHeight');
+            const gifLocation = document.getElementById('gifLocation');
+            const browseGifLocation = document.getElementById('browseGifLocation');
+            const confirmGifExport = document.getElementById('confirmGifExport');
+            const cameraSettingsModal = new bootstrap.Modal(document.getElementById('cameraSettingsModal'));
+            const cameraSelect = document.getElementById('cameraSelect');
+            const resolutionSelect = document.getElementById('resolutionSelect');
+            const mirrorCameraCheckbox = document.getElementById('mirrorCamera');
+            const settingsEnableIdle = document.getElementById('settingsEnableIdle');
+            const settingsIdleSettings = document.getElementById('settingsIdleSettings');
+            const settingsIdleTimeInput = document.getElementById('settingsIdleTime');
+            const settingsCountdownTimeInput = document.getElementById('settingsCountdownTime');
+            const saveCameraSettingsBtn = document.getElementById('saveCameraSettings');
+            
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingText = document.getElementById('loadingText');
+            const qualityOptions = document.querySelectorAll('.quality-option');
+            
+            // State variables
+            let originalTemplate = null;
+            let detectedAreas = [];
+            let nextAreaId = 1;
+            let currentStream = null;
+            let dragTarget = null;
+            let isDragging = false;
+            let dragOffset = { x: 0, y: 0 };
+            let currentCaptureArea = null;
+            let dimensionBox = null;
+            let currentCropper = null;
+            let currentCropArea = null;
+            let exportQuality = 1.0;
+            let autoCaptureInterval = null;
+            let autoCaptureTimeout = null;
+            let isAutoCapturing = false;
+            let currentAutoCaptureAreaIndex = 0;
+            let isPreviewMovable = false;
+            let isDraggingPreview = false;
+            let previewDragOffset = { x: 0, y: 0 };
+            let exportDirectoryHandle = null;
+            let gifDirectoryHandle = null;
+            
+            // Event listeners
+            loadImageBtn.addEventListener('click', () => imageInput.click());
+            imageInput.addEventListener('change', handleTemplateUpload);
+            detectAreasBtn.addEventListener('click', detectChromaAreas);
+            exportBtn.addEventListener('click', () => exportModal.show());
+            createGifBtn.addEventListener('click', () => gifExportModal.show());
+            autoCaptureBtn.addEventListener('click', startAutoCapture);
+            cameraSettingsBtn.addEventListener('click', () => cameraSettingsModal.show());
+            togglePreviewBtn.addEventListener('click', toggleMovablePreview);
+            resetCanvasBtn.addEventListener('click', resetCanvas);
+            resetAppBtn.addEventListener('click', resetApp);
+            toleranceSlider.addEventListener('input', updateTolerance);
+            minAreaSlider.addEventListener('input', updateMinArea);
+            featheringSlider.addEventListener('input', updateFeathering);
+            startCameraBtn.addEventListener('click', startCamera);
+            captureBtn.addEventListener('click', captureFromWebcam);
+            applyCrop.addEventListener('click', applyCropToArea);
+            confirmExport.addEventListener('click', exportImage);
+            confirmGifExport.addEventListener('click', createGIF);
+            closePreviewBtn.addEventListener('click', closeMovablePreview);
+            startAutoCaptureBtn.addEventListener('click', startAutoCapture);
+            stopAutoCaptureBtn.addEventListener('click', stopAutoCapture);
+            movableStartAutoCaptureBtn.addEventListener('click', startAutoCapture);
+            movableStopAutoCaptureBtn.addEventListener('click', stopAutoCapture);
+            saveCameraSettingsBtn.addEventListener('click', saveCameraSettings);
+            mirrorPreviewCheckbox.addEventListener('change', updateMirrorPreview);
+            movableMirrorPreviewCheckbox.addEventListener('change', updateMirrorPreview);
+            browseExportLocation.addEventListener('click', () => browseFolder('export'));
+            browseGifLocation.addEventListener('click', () => browseFolder('gif'));
+            
+            // Idle time toggle event listeners
+            enableIdle.addEventListener('change', updateIdleSettings);
+            movableEnableIdle.addEventListener('change', updateIdleSettings);
+            settingsEnableIdle.addEventListener('change', updateIdleSettings);
+            
+            // Quality option event listeners
+            qualityOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    qualityOptions.forEach(opt => opt.classList.remove('active'));
+                    this.classList.add('active');
+                    exportQuality = parseFloat(this.getAttribute('data-quality'));
+                });
+            });
+            
+            // Canvas event listeners for dragging
+            photoCanvas.addEventListener('mousedown', startDrag);
+            photoCanvas.addEventListener('mousemove', drag);
+            photoCanvas.addEventListener('mouseup', endDrag);
+            photoCanvas.addEventListener('mouseleave', endDrag);
+            
+            // Movable preview drag functionality
+            const previewHeader = document.querySelector('.preview-header');
+            previewHeader.addEventListener('mousedown', startPreviewDrag);
+            document.addEventListener('mousemove', dragPreview);
+            document.addEventListener('mouseup', endPreviewDrag);
+            
+            // Initialize idle settings
+            updateIdleSettings();
+            
+            // Functions
+            function handleTemplateUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        originalTemplate = img;
+                        
+                        // Set canvas dimensions to match image exactly
+                        templateCanvas.width = img.width;
+                        templateCanvas.height = img.height;
+                        photoCanvas.width = img.width;
+                        photoCanvas.height = img.height;
+                        
+                        // Maintain aspect ratio in display
+                        adjustCanvasDisplaySize();
+                        
+                        templateCtx.drawImage(img, 0, 0);
+                        statusText.textContent = 'Template loaded. Ready for detection.';
+                        detectedAreas = [];
+                        updateResultsUI();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            function adjustCanvasDisplaySize() {
+                // This function maintains the aspect ratio of the canvas in the container
+                const container = document.querySelector('.canvas-container');
+                const aspectRatio = templateCanvas.width / templateCanvas.height;
+                
+                // Calculate maximum dimensions that fit the container
+                let displayWidth = container.clientWidth;
+                let displayHeight = container.clientHeight;
+                
+                if (displayWidth / displayHeight > aspectRatio) {
+                    displayWidth = displayHeight * aspectRatio;
+                } else {
+                    displayHeight = displayWidth / aspectRatio;
+                }
+                
+                // Set canvas display size (doesn't affect actual canvas resolution)
+                templateCanvas.style.width = `${displayWidth}px`;
+                templateCanvas.style.height = `${displayHeight}px`;
+                photoCanvas.style.width = `${displayWidth}px`;
+                photoCanvas.style.height = `${displayHeight}px`;
+            }
+            
+            function updateTolerance() {
+                toleranceValue.textContent = toleranceSlider.value;
+            }
+            
+            function updateMinArea() {
+                minAreaValue.textContent = minAreaSlider.value;
+            }
+            
+            function updateFeathering() {
+                featheringValue.textContent = featheringSlider.value;
+            }
+            
+            function updateIdleSettings() {
+                // Update main idle settings
+                if (enableIdle.checked) {
+                    idleSettings.style.display = 'block';
+                } else {
+                    idleSettings.style.display = 'none';
+                }
+                
+                // Update movable preview idle settings
+                if (movableEnableIdle.checked) {
+                    movableIdleSettings.style.display = 'block';
+                } else {
+                    movableIdleSettings.style.display = 'none';
+                }
+                
+                // Update camera settings modal idle settings
+                if (settingsEnableIdle.checked) {
+                    settingsIdleSettings.style.display = 'block';
+                } else {
+                    settingsIdleSettings.style.display = 'none';
+                }
+                
+                // Sync values between different idle time inputs
+                if (enableIdle.checked !== movableEnableIdle.checked) {
+                    movableEnableIdle.checked = enableIdle.checked;
+                }
+                
+                if (enableIdle.checked !== settingsEnableIdle.checked) {
+                    settingsEnableIdle.checked = enableIdle.checked;
+                }
+                
+                // Sync idle time values
+                if (idleTimeInput.value !== movableIdleTimeInput.value) {
+                    movableIdleTimeInput.value = idleTimeInput.value;
+                }
+                
+                if (idleTimeInput.value !== settingsIdleTimeInput.value) {
+                    settingsIdleTimeInput.value = idleTimeInput.value;
+                }
+            }
+            
+            function detectChromaAreas() {
+                if (!originalTemplate) {
+                    statusText.textContent = 'Please load a template first.';
+                    return;
+                }
+                
+                statusText.textContent = 'Detecting chroma key areas...';
+                
+                // Reset state
+                detectedAreas = [];
+                nextAreaId = 1;
+                
+                // Draw the original template
+                templateCtx.drawImage(originalTemplate, 0, 0);
+                
+                // Get template image data
+                const imageData = templateCtx.getImageData(0, 0, templateCanvas.width, templateCanvas.height);
+                const data = imageData.data;
+                
+                // Parse the selected chroma key color
+                const chromaHex = chromaColor.value;
+                const chromaR = parseInt(chromaHex.substr(1, 2), 16);
+                const chromaG = parseInt(chromaHex.substr(3, 2), 16);
+                const chromaB = parseInt(chromaHex.substr(5, 2), 16);
+                
+                // Create a binary mask for chroma key pixels
+                const chromaMask = new Uint8Array(templateCanvas.width * templateCanvas.height);
+                const tolerance = parseInt(toleranceSlider.value);
+                const feathering = parseInt(featheringSlider.value);
+                
+                // First pass: detect chroma key pixels with tolerance
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    
+                    // Calculate color distance with weighted channels (green is more important)
+                    const distance = Math.sqrt(
+                        Math.pow(r - chromaR, 2) * 0.3 +
+                        Math.pow(g - chromaG, 2) * 0.6 +
+                        Math.pow(b - chromaB, 2) * 0.1
+                    );
+                    
+                    // Check if pixel is within tolerance
+                    if (distance <= tolerance) {
+                        const pixelIndex = i / 4;
+                        chromaMask[pixelIndex] = 1;
+                    }
+                }
+                
+                // Second pass: expand the mask to include adjacent similar pixels
+                if (feathering > 0) {
+                    const expandedMask = new Uint8Array(templateCanvas.width * templateCanvas.height);
+                    
+                    for (let y = 0; y < templateCanvas.height; y++) {
+                        for (let x = 0; x < templateCanvas.width; x++) {
+                            const index = y * templateCanvas.width + x;
+                            
+                            if (chromaMask[index]) {
+                                // Mark this pixel and its neighbors
+                                for (let dy = -feathering; dy <= feathering; dy++) {
+                                    for (let dx = -feathering; dx <= feathering; dx++) {
+                                        const nx = x + dx;
+                                        const ny = y + dy;
+                                        
+                                        if (nx >= 0 && nx < templateCanvas.width && ny >= 0 && ny < templateCanvas.height) {
+                                            const nIndex = ny * templateCanvas.width + nx;
+                                            expandedMask[nIndex] = 1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Replace the original mask with the expanded one
+                    for (let i = 0; i < chromaMask.length; i++) {
+                        chromaMask[i] = expandedMask[i];
+                    }
+                }
+                
+                // Find connected components (chroma key areas)
+                const visited = new Uint8Array(templateCanvas.width * templateCanvas.height);
+                const minArea = parseInt(minAreaSlider.value);
+                
+                for (let y = 0; y < templateCanvas.height; y++) {
+                    for (let x = 0; x < templateCanvas.width; x++) {
+                        const index = y * templateCanvas.width + x;
+                        
+                        if (chromaMask[index] && !visited[index]) {
+                            const area = floodFill(chromaMask, visited, x, y, templateCanvas.width, templateCanvas.height);
+                            
+                            if (area.pixels.length >= minArea) {
+                                // Calculate bounding box
+                                const bounds = calculateBounds(area.pixels, templateCanvas.width);
+                                
+                                detectedAreas.push({
+                                    id: nextAreaId++,
+                                    bounds: bounds,
+                                    pixels: area.pixels,
+                                    photo: null,
+                                    photoX: bounds.x,
+                                    photoY: bounds.y,
+                                    photoScale: 1.0
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                // Make chroma key areas transparent in the template
+                makeChromaAreasTransparent(chromaMask, imageData);
+                templateCtx.putImageData(imageData, 0, 0);
+                
+                // Draw results
+                updateResultsUI();
+                
+                statusText.textContent = `Detected ${detectedAreas.length} chroma key areas.`;
+            }
+            
+            function floodFill(mask, visited, startX, startY, width, height) {
+                const stack = [{x: startX, y: startY}];
+                const pixels = [];
+                
+                while (stack.length > 0) {
+                    const {x, y} = stack.pop();
+                    const index = y * width + x;
+                    
+                    if (x < 0 || x >= width || y < 0 || y >= height || visited[index] || !mask[index]) {
+                        continue;
+                    }
+                    
+                    visited[index] = 1;
+                    pixels.push({x, y});
+                    
+                    // Check 4-connected neighbors
+                    stack.push({x: x + 1, y});
+                    stack.push({x: x - 1, y});
+                    stack.push({x, y: y + 1});
+                    stack.push({x, y: y - 1});
+                }
+                
+                return { pixels };
+            }
+            
+            function calculateBounds(pixels, width) {
+                let minX = width, minY = Number.MAX_SAFE_INTEGER;
+                let maxX = 0, maxY = 0;
+                
+                for (const pixel of pixels) {
+                    minX = Math.min(minX, pixel.x);
+                    minY = Math.min(minY, pixel.y);
+                    maxX = Math.max(maxX, pixel.x);
+                    maxY = Math.max(maxY, pixel.y);
+                }
+                
+                return {
+                    x: minX,
+                    y: minY,
+                    width: maxX - minX + 1,
+                    height: maxY - minY + 1
+                };
+            }
+            
+            function makeChromaAreasTransparent(chromaMask, imageData) {
+                const data = imageData.data;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    const pixelIndex = i / 4;
+                    
+                    if (chromaMask[pixelIndex]) {
+                        // Set alpha to 0 for chroma key pixels
+                        data[i + 3] = 0;
+                    }
+                }
+            }
+            
+            function updateResultsUI() {
+                resultsCount.textContent = `${detectedAreas.length} areas detected`;
+                
+                // Clear previous results
+                detectionResults.innerHTML = '';
+                
+                if (detectedAreas.length === 0) {
+                    detectionResults.innerHTML = `
+                        <div class="empty-state">
+                            <i class="bi bi-border-style"></i>
+                            <p>No areas detected</p>
+                            <small>Load a template and detect areas to get started</small>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Add each detected area to the UI
+                detectedAreas.forEach(area => {
+                    const areaElement = document.createElement('div');
+                    areaElement.className = 'area-card';
+                    
+                    areaElement.innerHTML = `
+                        <div class="area-header">
+                            <span>Area <span class="area-id">${area.id}</span></span>
+                            <div>
+                                <small class="text-muted me-2">${area.bounds.width} × ${area.bounds.height}</small>
+                                ${area.photo ? '<button class="delete-photo-btn" data-area-id="' + area.id + '"><i class="bi bi-trash"></i></button>' : ''}
+                            </div>
+                        </div>
+                        <div class="area-controls">
+                            <div class="control-row">
+                                <label>X:</label>
+                                <input type="range" class="form-range position-x" min="0" max="${templateCanvas.width}" value="${area.photoX}" data-area-id="${area.id}">
+                                <span class="value-display x-value">${area.photoX}</span>
+                            </div>
+                            <div class="control-row">
+                                <label>Y:</label>
+                                <input type="range" class="form-range position-y" min="0" max="${templateCanvas.height}" value="${area.photoY}" data-area-id="${area.id}">
+                                <span class="value-display y-value">${area.photoY}</span>
+                            </div>
+                            <div class="control-row">
+                                <label>Scale:</label>
+                                <input type="range" class="form-range scale" min="0.1" max="3" step="0.1" value="${area.photoScale}" data-area-id="${area.id}">
+                                <span class="value-display scale-value">${area.photoScale}</span>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary load-photo-btn" data-area-id="${area.id}">
+                                <i class="bi bi-upload me-1"></i>${area.photo ? 'Change Photo' : 'Load Photo'}
+                            </button>
+                        </div>
+                    `;
+                    
+                    detectionResults.appendChild(areaElement);
+                });
+                
+                // Add event listeners to the controls
+                document.querySelectorAll('.load-photo-btn').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const areaId = parseInt(this.getAttribute('data-area-id'));
+                        showCropModal(areaId);
+                    });
+                });
+                
+                document.querySelectorAll('.delete-photo-btn').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const areaId = parseInt(this.getAttribute('data-area-id'));
+                        deletePhoto(areaId);
+                    });
+                });
+                
+                document.querySelectorAll('.position-x').forEach(slider => {
+                    slider.addEventListener('input', function() {
+                        const areaId = parseInt(this.getAttribute('data-area-id'));
+                        const area = detectedAreas.find(a => a.id === areaId);
+                        if (area) {
+                            area.photoX = parseInt(this.value);
+                            this.nextElementSibling.textContent = this.value;
+                            redrawPhotos();
+                        }
+                    });
+                });
+                
+                document.querySelectorAll('.position-y').forEach(slider => {
+                    slider.addEventListener('input', function() {
+                        const areaId = parseInt(this.getAttribute('data-area-id'));
+                        const area = detectedAreas.find(a => a.id === areaId);
+                        if (area) {
+                            area.photoY = parseInt(this.value);
+                            this.nextElementSibling.textContent = this.value;
+                            redrawPhotos();
+                        }
+                    });
+                });
+                
+                document.querySelectorAll('.scale').forEach(slider => {
+                    slider.addEventListener('input', function() {
+                        const areaId = parseInt(this.getAttribute('data-area-id'));
+                        const area = detectedAreas.find(a => a.id === areaId);
+                        if (area) {
+                            area.photoScale = parseFloat(this.value);
+                            this.nextElementSibling.textContent = this.value;
+                            redrawPhotos();
+                        }
+                    });
+                });
+            }
+            
+            function deletePhoto(areaId) {
+                const area = detectedAreas.find(a => a.id === areaId);
+                if (area) {
+                    area.photo = null;
+                    redrawPhotos();
+                    updateResultsUI();
+                    statusText.textContent = `Photo deleted from area ${areaId}`;
+                    
+                    // Update capture overlay to show this area as available
+                    updateCaptureOverlay();
+                    updateMovableCaptureOverlay();
+                }
+            }
+            
+            function showCropModal(areaId) {
+                currentCropArea = detectedAreas.find(a => a.id === areaId);
+                if (!currentCropArea) return;
+                
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                
+                input.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        cropImage.src = e.target.result;
+                        cropAreaId.textContent = areaId;
+                        cropModal.show();
+                        
+                        // Initialize cropper with aspect ratio of the area
+                        if (currentCropper) {
+                            currentCropper.destroy();
+                        }
+                        
+                        currentCropper = new Cropper(cropImage, {
+                            aspectRatio: currentCropArea.bounds.width / currentCropArea.bounds.height,
+                            viewMode: 1,
+                            autoCropArea: 1,
+                            responsive: true,
+                            restore: false,
+                            guides: true,
+                            center: true,
+                            highlight: false,
+                            cropBoxMovable: true,
+                            cropBoxResizable: true,
+                            toggleDragModeOnDblclick: false
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                });
+                
+                input.click();
+            }
+            
+            function applyCropToArea() {
+                if (!currentCropper || !currentCropArea) return;
+                
+                // Get cropped canvas at original resolution for maximum quality
+                const croppedCanvas = currentCropper.getCroppedCanvas();
+                
+                // Create image from canvas
+                const img = new Image();
+                img.onload = function() {
+                    currentCropArea.photo = img;
+                    // Set initial scale to fit the area perfectly
+                    currentCropArea.photoScale = Math.min(
+                        currentCropArea.bounds.width / img.width,
+                        currentCropArea.bounds.height / img.height
+                    );
+                    
+                    redrawPhotos();
+                    updateResultsUI();
+                    statusText.textContent = `Photo cropped and loaded for area ${currentCropArea.id}`;
+                };
+                img.src = croppedCanvas.toDataURL('image/png');
+                
+                cropModal.hide();
+                if (currentCropper) {
+                    currentCropper.destroy();
+                    currentCropper = null;
+                }
+            }
+            
+            function redrawPhotos() {
+                // Clear the photo canvas
+                photoCtx.clearRect(0, 0, photoCanvas.width, photoCanvas.height);
+                
+                // Draw each photo with high-quality settings
+                photoCtx.imageSmoothingEnabled = true;
+                photoCtx.imageSmoothingQuality = 'high';
+                
+                detectedAreas.forEach(area => {
+                    if (area.photo) {
+                        const scaledWidth = area.photo.width * area.photoScale;
+                        const scaledHeight = area.photo.height * area.photoScale;
+                        
+                        photoCtx.drawImage(
+                            area.photo,
+                            area.photoX,
+                            area.photoY,
+                            scaledWidth,
+                            scaledHeight
+                        );
+                    }
+                });
+            }
+            
+            function startCamera() {
+                if (currentStream) {
+                    // Stop the current stream if already running
+                    currentStream.getTracks().forEach(track => track.stop());
+                    currentStream = null;
+                    webcamVideo.classList.add('d-none');
+                    captureOverlay.classList.add('d-none');
+                    movableWebcamVideo.classList.add('d-none');
+                    movableCaptureOverlay.classList.add('d-none');
+                    startCameraBtn.classList.remove('active');
+                    statusText.textContent = 'Camera stopped.';
+                    return;
+                }
+                
+                // Get available cameras
+                navigator.mediaDevices.enumerateDevices()
+                    .then(devices => {
+                        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                        
+                        // Populate camera select
+                        cameraSelect.innerHTML = '<option value="">Select Camera</option>';
+                        videoDevices.forEach((device, index) => {
+                            const option = document.createElement('option');
+                            option.value = device.deviceId;
+                            option.text = device.label || `Camera ${index + 1}`;
+                            cameraSelect.appendChild(option);
+                        });
+                        
+                        if (videoDevices.length > 0) {
+                            // Get selected resolution
+                            const resolution = resolutionSelect.value.split('x');
+                            const width = parseInt(resolution[0]);
+                            const height = parseInt(resolution[1]);
+                            
+                            // Try to get the selected camera or default to first
+                            const selectedCamera = cameraSelect.value || videoDevices[0].deviceId;
+                            
+                            const constraints = {
+                                video: {
+                                    deviceId: selectedCamera ? { exact: selectedCamera } : undefined,
+                                    width: { ideal: width },
+                                    height: { ideal: height }
+                                }
+                            };
+                            
+                            navigator.mediaDevices.getUserMedia(constraints)
+                                .then(stream => {
+                                    currentStream = stream;
+                                    webcamVideo.srcObject = stream;
+                                    webcamVideo.classList.remove('d-none');
+                                    movableWebcamVideo.srcObject = stream;
+                                    movableWebcamVideo.classList.remove('d-none');
+                                    startCameraBtn.classList.add('active');
+                                    statusText.textContent = 'Camera started. Ready to capture.';
+                                    
+                                    // Apply mirror effect if enabled
+                                    updateMirrorPreview();
+                                    
+                                    // Set up the capture overlay once video is loaded
+                                    webcamVideo.addEventListener('loadedmetadata', function() {
+                                        captureOverlay.width = webcamVideo.videoWidth;
+                                        captureOverlay.height = webcamVideo.videoHeight;
+                                        captureOverlay.classList.remove('d-none');
+                                        updateCaptureOverlay();
+                                        
+                                        movableCaptureOverlay.width = movableWebcamVideo.videoWidth;
+                                        movableCaptureOverlay.height = movableWebcamVideo.videoHeight;
+                                        movableCaptureOverlay.classList.remove('d-none');
+                                        updateMovableCaptureOverlay();
+                                    });
+                                })
+                                .catch(err => {
+                                    console.error('Error accessing camera:', err);
+                                    statusText.textContent = 'Error accessing camera.';
+                                });
+                        } else {
+                            statusText.textContent = 'No cameras found.';
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error enumerating devices:', err);
+                        statusText.textContent = 'Error accessing camera devices.';
+                    });
+            }
+            
+            function updateMirrorPreview() {
+                const isMirrored = mirrorPreviewCheckbox.checked || mirrorCameraCheckbox.checked || movableMirrorPreviewCheckbox.checked;
+                webcamVideo.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+                movableWebcamVideo.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+            }
+            
+            function updateCaptureOverlay() {
+                if (!webcamVideo.videoWidth || !detectedAreas.length) return;
+                
+                // Find the next area without a photo
+                const emptyArea = detectedAreas.find(area => !area.photo);
+                
+                if (!emptyArea) {
+                    // All areas have photos, clear the overlay
+                    captureOverlayCtx.clearRect(0, 0, captureOverlay.width, captureOverlay.height);
+                    currentCaptureArea = null;
+                    return;
+                }
+                
+                currentCaptureArea = emptyArea;
+                
+                // Clear the overlay
+                captureOverlayCtx.clearRect(0, 0, captureOverlay.width, captureOverlay.height);
+                
+                // Calculate the dimension box for the capture area
+                const videoAspect = captureOverlay.width / captureOverlay.height;
+                const areaAspect = emptyArea.bounds.width / emptyArea.bounds.height;
+                
+                let boxWidth, boxHeight;
+                
+                if (videoAspect > areaAspect) {
+                    // Video is wider than the area aspect ratio
+                    boxHeight = captureOverlay.height;
+                    boxWidth = boxHeight * areaAspect;
+                } else {
+                    // Video is taller than the area aspect ratio
+                    boxWidth = captureOverlay.width;
+                    boxHeight = boxWidth / areaAspect;
+                }
+                
+                const boxX = (captureOverlay.width - boxWidth) / 2;
+                const boxY = (captureOverlay.height - boxHeight) / 2;
+                
+                // Draw a semi-transparent overlay outside the dimension box
+                captureOverlayCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                captureOverlayCtx.fillRect(0, 0, captureOverlay.width, captureOverlay.height);
+                
+                // Clear the inside of the dimension box
+                captureOverlayCtx.clearRect(boxX, boxY, boxWidth, boxHeight);
+                
+                // Draw the dimension box border
+                captureOverlayCtx.strokeStyle = '#ffc107';
+                captureOverlayCtx.lineWidth = 3;
+                captureOverlayCtx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+                
+                // Add dimension label
+                captureOverlayCtx.fillStyle = '#ffc107';
+                captureOverlayCtx.font = 'bold 14px Arial';
+                captureOverlayCtx.fillText(
+                    `${emptyArea.bounds.width} × ${emptyArea.bounds.height}`,
+                    boxX + 10,
+                    boxY + 20
+                );
+                
+                // Add area ID label
+                captureOverlayCtx.fillText(
+                    `Area ${emptyArea.id}`,
+                    boxX + 10,
+                    boxY + boxHeight - 10
+                );
+                
+                // Store dimension box for capture
+                dimensionBox = {
+                    x: boxX,
+                    y: boxY,
+                    width: boxWidth,
+                    height: boxHeight
+                };
+            }
+            
+            function updateMovableCaptureOverlay() {
+                if (!movableWebcamVideo.videoWidth || !detectedAreas.length) return;
+                
+                // Find the next area without a photo
+                const emptyArea = detectedAreas.find(area => !area.photo);
+                
+                if (!emptyArea) {
+                    // All areas have photos, clear the overlay
+                    movableCaptureOverlayCtx.clearRect(0, 0, movableCaptureOverlay.width, movableCaptureOverlay.height);
+                    return;
+                }
+                
+                // Clear the overlay
+                movableCaptureOverlayCtx.clearRect(0, 0, movableCaptureOverlay.width, movableCaptureOverlay.height);
+                
+                // Calculate the dimension box for the capture area
+                const videoAspect = movableCaptureOverlay.width / movableCaptureOverlay.height;
+                const areaAspect = emptyArea.bounds.width / emptyArea.bounds.height;
+                
+                let boxWidth, boxHeight;
+                
+                if (videoAspect > areaAspect) {
+                    // Video is wider than the area aspect ratio
+                    boxHeight = movableCaptureOverlay.height;
+                    boxWidth = boxHeight * areaAspect;
+                } else {
+                    // Video is taller than the area aspect ratio
+                    boxWidth = movableCaptureOverlay.width;
+                    boxHeight = boxWidth / areaAspect;
+                }
+                
+                const boxX = (movableCaptureOverlay.width - boxWidth) / 2;
+                const boxY = (movableCaptureOverlay.height - boxHeight) / 2;
+                
+                // Draw a semi-transparent overlay outside the dimension box
+                movableCaptureOverlayCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                movableCaptureOverlayCtx.fillRect(0, 0, movableCaptureOverlay.width, movableCaptureOverlay.height);
+                
+                // Clear the inside of the dimension box
+                movableCaptureOverlayCtx.clearRect(boxX, boxY, boxWidth, boxHeight);
+                
+                // Draw the dimension box border
+                movableCaptureOverlayCtx.strokeStyle = '#ffc107';
+                movableCaptureOverlayCtx.lineWidth = 3;
+                movableCaptureOverlayCtx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+                
+                // Add dimension label
+                movableCaptureOverlayCtx.fillStyle = '#ffc107';
+                movableCaptureOverlayCtx.font = 'bold 14px Arial';
+                movableCaptureOverlayCtx.fillText(
+                    `${emptyArea.bounds.width} × ${emptyArea.bounds.height}`,
+                    boxX + 10,
+                    boxY + 20
+                );
+                
+                // Add area ID label
+                movableCaptureOverlayCtx.fillText(
+                    `Area ${emptyArea.id}`,
+                    boxX + 10,
+                    boxY + boxHeight - 10
+                );
+            }
+            
+            function captureFromWebcam() {
+                if (!currentStream || !currentCaptureArea || !dimensionBox) {
+                    statusText.textContent = 'Please start the camera and ensure there are empty areas.';
+                    return;
+                }
+                
+                // Create a temporary canvas for capturing at full resolution
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = dimensionBox.width;
+                tempCanvas.height = dimensionBox.height;
+                
+                // Draw the current video frame at full resolution
+                tempCtx.drawImage(
+                    webcamVideo,
+                    dimensionBox.x, dimensionBox.y, dimensionBox.width, dimensionBox.height, // source rect (from video)
+                    0, 0, dimensionBox.width, dimensionBox.height // destination rect (to canvas)
+                );
+                
+                // Create an image from the canvas
+                const img = new Image();
+                img.onload = function() {
+                    currentCaptureArea.photo = img;
+                    // Set initial scale to fit the area perfectly
+                    currentCaptureArea.photoScale = Math.min(
+                        currentCaptureArea.bounds.width / img.width,
+                        currentCaptureArea.bounds.height / img.height
+                    );
+                    
+                    redrawPhotos();
+                    updateResultsUI();
+                    statusText.textContent = `Photo captured for area ${currentCaptureArea.id}`;
+                    
+                    // Show photo captured message
+                    showPhotoCaptured();
+                    
+                    // Update the capture overlay for the next empty area
+                    updateCaptureOverlay();
+                    updateMovableCaptureOverlay();
+                };
+                img.src = tempCanvas.toDataURL('image/png');
+            }
+            
+            function startAutoCapture() {
+                if (!currentStream) {
+                    statusText.textContent = 'Please start the camera first.';
+                    return;
+                }
+                
+                if (detectedAreas.length === 0) {
+                    statusText.textContent = 'No areas detected. Please detect areas first.';
+                    return;
+                }
+                
+                // Find the first empty area
+                currentAutoCaptureAreaIndex = detectedAreas.findIndex(area => !area.photo);
+                
+                if (currentAutoCaptureAreaIndex === -1) {
+                    statusText.textContent = 'All areas already have photos.';
+                    return;
+                }
+                
+                isAutoCapturing = true;
+                autoCaptureBtn.classList.add('active');
+                startAutoCaptureBtn.disabled = true;
+                movableStartAutoCaptureBtn.disabled = true;
+                statusText.textContent = 'Auto capture sequence started.';
+                
+                // Start the auto capture sequence
+                startAutoCaptureSequence();
+            }
+            
+            function startAutoCaptureSequence() {
+                if (!isAutoCapturing) return;
+                
+                // Get the current area to capture
+                currentCaptureArea = detectedAreas[currentAutoCaptureAreaIndex];
+                
+                // Get idle and countdown times
+                const enableIdleTime = enableIdle.checked;
+                const idleTime = enableIdleTime ? parseInt(idleTimeInput.value) * 1000 : 0;
+                const countdownTime = parseInt(countdownTimeInput.value) * 1000;
+                
+                if (enableIdleTime) {
+                    // Show idle message
+                    showCountdownMessage('Get ready! Photo session starting soon...', true);
+                    
+                    // After idle time, start countdown
+                    setTimeout(() => {
+                        if (!isAutoCapturing) return;
+                        startCountdownSequence(countdownTime);
+                    }, idleTime);
+                } else {
+                    // Start countdown immediately
+                    startCountdownSequence(countdownTime);
+                }
+            }
+            
+            function startCountdownSequence(countdownTime) {
+                // Show countdown message
+                showCountdownMessage('Photo will be taken in:', true);
+                
+                // Start countdown
+                let countdown = countdownTime / 1000;
+                showCountdownDisplay(countdown);
+                
+                const countdownInterval = setInterval(() => {
+                    if (!isAutoCapturing) {
+                        clearInterval(countdownInterval);
+                        hideCountdowns();
+                        return;
+                    }
+                    
+                    countdown--;
+                    
+                    // Change color to red in the last 3 seconds
+                    if (countdown <= 3) {
+                        countdownDisplay.style.color = '#ff4444';
+                        movableCountdownDisplay.style.color = '#ff4444';
+                    }
+                    
+                    if (countdown > 0) {
+                        showCountdownDisplay(countdown);
+                    } else {
+                        clearInterval(countdownInterval);
+                        hideCountdowns();
+                        
+                        // Capture the photo
+                        captureFromWebcam();
+                        
+                        // Move to next area if available
+                        setTimeout(() => {
+                            if (!isAutoCapturing) return;
+                            
+                            currentAutoCaptureAreaIndex = detectedAreas.findIndex(area => !area.photo);
+                            
+                            if (currentAutoCaptureAreaIndex !== -1) {
+                                // Continue to next area
+                                startAutoCaptureSequence();
+                            } else {
+                                // All areas captured
+                                stopAutoCapture();
+                                statusText.textContent = 'Auto capture sequence completed. All areas filled.';
+                            }
+                        }, 2000); // Wait 2 seconds before moving to next area
+                    }
+                }, 1000);
+            }
+            
+            function stopAutoCapture() {
+                isAutoCapturing = false;
+                autoCaptureBtn.classList.remove('active');
+                startAutoCaptureBtn.disabled = false;
+                movableStartAutoCaptureBtn.disabled = false;
+                hideCountdowns();
+                statusText.textContent = 'Auto capture stopped.';
+            }
+            
+            function showCountdownMessage(message, showInMovable = false) {
+                countdownMessage.textContent = message;
+                countdownMessage.style.display = 'block';
+                
+                if (showInMovable && movablePreview.style.display !== 'none') {
+                    movableCountdownMessage.textContent = message;
+                    movableCountdownMessage.style.display = 'block';
+                }
+            }
+            
+            function showCountdownDisplay(number, showInMovable = false) {
+                countdownDisplay.textContent = number;
+                countdownDisplay.style.display = 'block';
+                
+                if (showInMovable && movablePreview.style.display !== 'none') {
+                    movableCountdownDisplay.textContent = number;
+                    movableCountdownDisplay.style.display = 'block';
+                }
+            }
+            
+            function showPhotoCaptured(showInMovable = false) {
+                photoCaptured.style.display = 'block';
+                
+                if (showInMovable && movablePreview.style.display !== 'none') {
+                    movablePhotoCaptured.style.display = 'block';
+                }
+                
+                // Hide after 2 seconds
+                setTimeout(() => {
+                    photoCaptured.style.display = 'none';
+                    movablePhotoCaptured.style.display = 'none';
+                }, 2000);
+            }
+            
+            function hideCountdowns() {
+                countdownMessage.style.display = 'none';
+                countdownDisplay.style.display = 'none';
+                countdownDisplay.style.color = 'white'; // Reset color
+                movableCountdownMessage.style.display = 'none';
+                movableCountdownDisplay.style.display = 'none';
+                movableCountdownDisplay.style.color = 'white'; // Reset color
+            }
+            
+            function toggleMovablePreview() {
+                if (movablePreview.style.display === 'none' || movablePreview.style.display === '') {
+                    movablePreview.style.display = 'block';
+                    togglePreviewBtn.classList.add('active');
+                    
+                    // Update the movable preview overlay
+                    updateMovableCaptureOverlay();
+                } else {
+                    closeMovablePreview();
+                }
+            }
+            
+            function closeMovablePreview() {
+                movablePreview.style.display = 'none';
+                togglePreviewBtn.classList.remove('active');
+            }
+            
+            function startPreviewDrag(e) {
+                isDraggingPreview = true;
+                const rect = movablePreview.getBoundingClientRect();
+                previewDragOffset.x = e.clientX - rect.left;
+                previewDragOffset.y = e.clientY - rect.top;
+                movablePreview.style.cursor = 'grabbing';
+            }
+            
+            function dragPreview(e) {
+                if (!isDraggingPreview) return;
+                
+                movablePreview.style.left = (e.clientX - previewDragOffset.x) + 'px';
+                movablePreview.style.top = (e.clientY - previewDragOffset.y) + 'px';
+            }
+            
+            function endPreviewDrag() {
+                isDraggingPreview = false;
+                movablePreview.style.cursor = 'default';
+            }
+            
+            function saveCameraSettings() {
+                // Sync settings between different inputs
+                enableIdle.checked = settingsEnableIdle.checked;
+                idleTimeInput.value = settingsIdleTimeInput.value;
+                countdownTimeInput.value = settingsCountdownTimeInput.value;
+                mirrorPreviewCheckbox.checked = mirrorCameraCheckbox.checked;
+                
+                // Update UI
+                updateIdleSettings();
+                updateMirrorPreview();
+                
+                // Save settings and close modal
+                cameraSettingsModal.hide();
+                statusText.textContent = 'Camera settings saved.';
+                
+                // Restart camera if it's running to apply new settings
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                    currentStream = null;
+                    startCamera();
+                }
+            }
+            
+            async function browseFolder(type) {
+                try {
+                    // Check if the File System Access API is supported
+                    if ('showDirectoryPicker' in window) {
+                        const directoryHandle = await window.showDirectoryPicker();
+                        
+                        if (type === 'export') {
+                            exportDirectoryHandle = directoryHandle;
+                            exportLocation.value = directoryHandle.name;
+                        } else if (type === 'gif') {
+                            gifDirectoryHandle = directoryHandle;
+                            gifLocation.value = directoryHandle.name;
+                        }
+                        
+                        statusText.textContent = `Selected folder: ${directoryHandle.name}`;
+                    } else {
+                        // Fallback for browsers that don't support the File System Access API
+                        statusText.textContent = 'Folder selection not supported in this browser. File will be downloaded to default location.';
+                    }
+                } catch (error) {
+                    if (error.name !== 'AbortError') {
+                        console.error('Error selecting folder:', error);
+                        statusText.textContent = 'Error selecting folder. File will be downloaded to default location.';
+                    }
+                }
+            }
+            
+            async function saveFile(blob, fileName, directoryHandle) {
+                try {
+                    if (directoryHandle && 'showDirectoryPicker' in window) {
+                        // Create a file handle
+                        const fileHandle = await directoryHandle.getFileHandle(fileName, { create: true });
+                        
+                        // Create a FileSystemWritableFileStream to write to
+                        const writableStream = await fileHandle.createWritable();
+                        
+                        // Write the contents of the blob to the stream
+                        await writableStream.write(blob);
+                        
+                        // Close the file and write the contents to disk
+                        await writableStream.close();
+                        
+                        return true;
+                    }
+                } catch (error) {
+                    console.error('Error saving file to selected folder:', error);
+                }
+                
+                return false;
+            }
+            
+            function exportImage() {
+                if (!originalTemplate) {
+                    statusText.textContent = 'Please load a template first.';
+                    return;
+                }
+                
+                const fileName = exportFileName.value || 'chroma-key-result';
+                const dpi = parseInt(exportDPI.value);
+                const fileExtension = 'jpg';
+                const fullFileName = `${fileName}.${fileExtension}`;
+                
+                // Show loading overlay
+                loadingOverlay.style.display = 'flex';
+                
+                // Use setTimeout to allow the UI to update before starting the heavy processing
+                setTimeout(() => {
+                    // Calculate scale factor for DPI
+                    const scale = dpi / 96;
+                    
+                    // Create a high-resolution canvas
+                    const exportCanvas = document.createElement('canvas');
+                    exportCanvas.width = templateCanvas.width * scale;
+                    exportCanvas.height = templateCanvas.height * scale;
+                    const exportCtx = exportCanvas.getContext('2d');
+                    
+                    // Set ultra-high quality rendering
+                    exportCtx.imageSmoothingEnabled = true;
+                    exportCtx.imageSmoothingQuality = 'high';
+                    
+                    // Draw the photos at high resolution with premium quality
+                    detectedAreas.forEach(area => {
+                        if (area.photo) {
+                            const scaledWidth = area.photo.width * area.photoScale * scale;
+                            const scaledHeight = area.photo.height * area.photoScale * scale;
+                            
+                            // Use high-quality image rendering
+                            exportCtx.drawImage(
+                                area.photo,
+                                area.photoX * scale,
+                                area.photoY * scale,
+                                scaledWidth,
+                                scaledHeight
+                            );
+                        }
+                    });
+                    
+                    // Draw the template at high resolution
+                    exportCtx.drawImage(
+                        templateCanvas,
+                        0, 0, templateCanvas.width, templateCanvas.height,
+                        0, 0, exportCanvas.width, exportCanvas.height
+                    );
+                    
+                    // Convert to blob with specified quality
+                    exportCanvas.toBlob(async function(blob) {
+                        let savedToFolder = false;
+                        
+                        // Try to save to selected folder if available
+                        if (exportDirectoryHandle) {
+                            savedToFolder = await saveFile(blob, fullFileName, exportDirectoryHandle);
+                        }
+                        
+                        if (!savedToFolder) {
+                            // Fallback to download
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = fullFileName;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                        }
+                        
+                        statusText.textContent = `Premium quality image exported as ${fullFileName} at ${dpi} DPI`;
+                        loadingOverlay.style.display = 'none';
+                        exportModal.hide();
+                    }, 'image/jpeg', exportQuality);
+                }, 100);
+            }
+            
+            function createGIF() {
+                // Get photos with their current cropping and scaling
+                const photos = detectedAreas
+                    .filter(area => area.photo)
+                    .sort((a, b) => a.id - b.id); // Sort by area ID
+                
+                if (photos.length === 0) {
+                    statusText.textContent = 'No photos available to create GIF. Please add photos first.';
+                    return;
+                }
+                
+                const fileName = gifFileName.value || 'photo-slideshow';
+                const frameDuration = parseInt(gifFrameDuration.value);
+                const quality = parseInt(gifQuality.value);
+                const width = parseInt(gifWidth.value);
+                const height = parseInt(gifHeight.value);
+                const fileExtension = 'gif';
+                const fullFileName = `${fileName}.${fileExtension}`;
+                
+                // Show loading overlay
+                loadingOverlay.style.display = 'flex';
+                loadingText.textContent = 'Creating high-quality GIF...';
+                
+                // Use setTimeout to allow the UI to update
+                setTimeout(async () => {
+                    try {
+                        // Create GIF instance with high quality settings
+                        const gif = new GIF({
+                            workers: 4,
+                            quality: quality, // Lower number = higher quality
+                            width: width,
+                            height: height,
+                            workerScript: 'gif.worker.js', // Make sure this file is in the same directory
+                            background: '#ffffff', // White background
+                            dither: false // No dithering for cleaner images
+                        });
+                        
+                        // Add each photo as a frame
+                        photos.forEach(area => {
+                            // Create a canvas for the frame
+                            const frameCanvas = document.createElement('canvas');
+                            frameCanvas.width = width;
+                            frameCanvas.height = height;
+                            const frameCtx = frameCanvas.getContext('2d');
+                            
+                            // Set high quality rendering
+                            frameCtx.imageSmoothingEnabled = true;
+                            frameCtx.imageSmoothingQuality = 'high';
+                            
+                            // Fill with white background
+                            frameCtx.fillStyle = '#ffffff';
+                            frameCtx.fillRect(0, 0, width, height);
+                            
+                            // Calculate scaling to fit the photo in the frame while maintaining aspect ratio
+                            const photoAspect = area.photo.width / area.photo.height;
+                            const frameAspect = width / height;
+                            
+                            let drawWidth, drawHeight, offsetX, offsetY;
+                            
+                            if (photoAspect > frameAspect) {
+                                // Photo is wider than frame - fit to width
+                                drawWidth = width;
+                                drawHeight = width / photoAspect;
+                                offsetX = 0;
+                                offsetY = (height - drawHeight) / 2;
+                            } else {
+                                // Photo is taller than frame - fit to height
+                                drawHeight = height;
+                                drawWidth = height * photoAspect;
+                                offsetX = (width - drawWidth) / 2;
+                                offsetY = 0;
+                            }
+                            
+                            // Draw the photo centered in the frame
+                            frameCtx.drawImage(
+                                area.photo,
+                                offsetX,
+                                offsetY,
+                                drawWidth,
+                                drawHeight
+                            );
+                            
+                            // Add frame to GIF with specified duration
+                            gif.addFrame(frameCanvas, { delay: frameDuration });
+                        });
+                        
+                        // Render the GIF
+                        gif.on('finished', async function(blob) {
+                            let savedToFolder = false;
+                            
+                            // Try to save to selected folder if available
+                            if (gifDirectoryHandle) {
+                                savedToFolder = await saveFile(blob, fullFileName, gifDirectoryHandle);
+                            }
+                            
+                            if (!savedToFolder) {
+                                // Fallback to download
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = fullFileName;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                            }
+                            
+                            loadingOverlay.style.display = 'none';
+                            gifExportModal.hide();
+                            statusText.textContent = `High-quality GIF exported as ${fullFileName} with ${photos.length} frames`;
+                        });
+                        
+                        gif.on('progress', function(p) {
+                            loadingText.textContent = `Creating GIF... ${Math.round(p * 100)}%`;
+                        });
+                        
+                        gif.render();
+                    } catch (error) {
+                        console.error('Error creating GIF:', error);
+                        loadingOverlay.style.display = 'none';
+                        statusText.textContent = 'Error creating GIF. Please try again.';
+                    }
+                }, 100);
+            }
+            
+            function startDrag(e) {
+                const rect = photoCanvas.getBoundingClientRect();
+                const scaleX = photoCanvas.width / rect.width;
+                const scaleY = photoCanvas.height / rect.height;
+                const x = (e.clientX - rect.left) * scaleX;
+                const y = (e.clientY - rect.top) * scaleY;
+                
+                // Find which area (if any) was clicked
+                for (let i = detectedAreas.length - 1; i >= 0; i--) {
+                    const area = detectedAreas[i];
+                    if (area.photo && 
+                        x >= area.photoX && x <= area.photoX + (area.photo.width * area.photoScale) &&
+                        y >= area.photoY && y <= area.photoY + (area.photo.height * area.photoScale)) {
+                        
+                        dragTarget = area;
+                        isDragging = true;
+                        dragOffset.x = x - area.photoX;
+                        dragOffset.y = y - area.photoY;
+                        photoCanvas.style.cursor = 'grabbing';
+                        break;
+                    }
+                }
+            }
+            
+            function drag(e) {
+                if (!isDragging || !dragTarget) return;
+                
+                const rect = photoCanvas.getBoundingClientRect();
+                const scaleX = photoCanvas.width / rect.width;
+                const scaleY = photoCanvas.height / rect.height;
+                const x = (e.clientX - rect.left) * scaleX;
+                const y = (e.clientY - rect.top) * scaleY;
+                
+                dragTarget.photoX = x - dragOffset.x;
+                dragTarget.photoY = y - dragOffset.y;
+                
+                // Update UI sliders
+                const xSlider = document.querySelector(`.position-x[data-area-id="${dragTarget.id}"]`);
+                const ySlider = document.querySelector(`.position-y[data-area-id="${dragTarget.id}"]`);
+                
+                if (xSlider) {
+                    xSlider.value = dragTarget.photoX;
+                    xSlider.nextElementSibling.textContent = Math.round(dragTarget.photoX);
+                }
+                
+                if (ySlider) {
+                    ySlider.value = dragTarget.photoY;
+                    ySlider.nextElementSibling.textContent = Math.round(dragTarget.photoY);
+                }
+                
+                redrawPhotos();
+            }
+            
+            function endDrag() {
+                isDragging = false;
+                dragTarget = null;
+                photoCanvas.style.cursor = 'default';
+            }
+            
+            function resetCanvas() {
+                // Clear all photos but keep the template and detected areas
+                detectedAreas.forEach(area => {
+                    area.photo = null;
+                });
+                
+                redrawPhotos();
+                updateResultsUI();
+                updateCaptureOverlay();
+                updateMovableCaptureOverlay();
+                
+                statusText.textContent = 'Canvas reset. Template ready for new photos.';
+            }
+            
+            function resetApp() {
+                // Reload the page to clear everything
+                location.reload();
+            }
+            
+            // Adjust canvas size when window is resized
+            window.addEventListener('resize', adjustCanvasDisplaySize);
+        });
+    </script>
+</body>
+</html>
