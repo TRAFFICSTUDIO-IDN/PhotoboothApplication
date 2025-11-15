@@ -12,7 +12,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const exportBtn = document.getElementById('exportBtn');
     const createGifBtn = document.getElementById('createGifBtn');
     const autoCaptureBtn = document.getElementById('autoCaptureBtn');
-    const resetBtn = document.getElementById('resetBtn');
+    const cameraSettingsBtn = document.getElementById('cameraSettingsBtn');
+    const togglePreviewBtn = document.getElementById('togglePreviewBtn');
+    const resetCanvasBtn = document.getElementById('resetCanvasBtn');
+    const resetAppBtn = document.getElementById('resetAppBtn');
     const templateCanvas = document.getElementById('templateCanvas');
     const templateCtx = templateCanvas.getContext('2d', {
         willReadFrequently: true
@@ -31,21 +34,41 @@ document.addEventListener('DOMContentLoaded', function() {
     const minAreaValue = document.getElementById('minAreaValue');
     const featheringSlider = document.getElementById('feathering');
     const featheringValue = document.getElementById('featheringValue');
-    const idleTimeSlider = document.getElementById('idleTime');
-    const idleTimeValue = document.getElementById('idleTimeValue');
-    const countdownTimeSlider = document.getElementById('countdownTime');
-    const countdownTimeValue = document.getElementById('countdownTimeValue');
     const startCameraBtn = document.getElementById('startCameraBtn');
     const captureBtn = document.getElementById('captureBtn');
     const webcamVideo = document.getElementById('webcamVideo');
     const captureOverlay = document.getElementById('captureOverlay');
     const captureOverlayCtx = captureOverlay.getContext('2d');
-    const countdownOverlay = document.getElementById('countdownOverlay');
-    const countdownNumber = document.getElementById('countdownNumber');
     const countdownMessage = document.getElementById('countdownMessage');
-    const webcamPreview = document.getElementById('webcamPreview');
-    const detachPreviewBtn = document.getElementById('detachPreviewBtn');
-    const cameraOptionsBtn = document.getElementById('cameraOptionsBtn');
+    const countdownDisplay = document.getElementById('countdownDisplay');
+    const photoCaptured = document.getElementById('photoCaptured');
+
+    // Auto capture settings
+    const enableIdleTimeCheckbox = document.getElementById('enableIdleTime');
+    const idleTimeContainer = document.getElementById('idleTimeContainer');
+    const idleTimeSlider = document.getElementById('idleTime');
+    const idleTimeValue = document.getElementById('idleTimeValue');
+    const countdownTimeSlider = document.getElementById('countdownTime');
+    const countdownTimeValue = document.getElementById('countdownTimeValue');
+
+    // Movable preview elements
+    const movablePreview = document.getElementById('movablePreview');
+    const movableWebcamVideo = document.getElementById('movableWebcamVideo');
+    const movableCaptureOverlay = document.getElementById('movableCaptureOverlay');
+    const movableCaptureOverlayCtx = movableCaptureOverlay.getContext('2d');
+    const movableCountdownMessage = document.getElementById('movableCountdownMessage');
+    const movableCountdownDisplay = document.getElementById('movableCountdownDisplay');
+    const movablePhotoCaptured = document.getElementById('movablePhotoCaptured');
+    const closePreviewBtn = document.getElementById('closePreviewBtn');
+    const movableStartAutoCaptureBtn = document.getElementById('movableStartAutoCaptureBtn');
+    const movableStopAutoCaptureBtn = document.getElementById('movableStopAutoCaptureBtn');
+    const movableEnableIdleTimeCheckbox = document.getElementById('movableEnableIdleTime');
+    const movableIdleTimeContainer = document.getElementById('movableIdleTimeContainer');
+    const movableIdleTimeInput = document.getElementById('movableIdleTime');
+    const movableCountdownTimeInput = document.getElementById('movableCountdownTime');
+    const movableMirrorPreviewCheckbox = document.getElementById('movableMirrorPreview');
+
+    // Modal elements
     const cropModal = new bootstrap.Modal(document.getElementById('cropModal'));
     const cropImage = document.getElementById('cropImage');
     const cropAreaId = document.getElementById('cropAreaId');
@@ -53,6 +76,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const exportModal = new bootstrap.Modal(document.getElementById('exportModal'));
     const exportFileName = document.getElementById('exportFileName');
     const exportDPI = document.getElementById('exportDPI');
+    const exportQualityButtons = document.querySelectorAll('#exportModal .btn-outline-primary');
+    const exportFolderPath = document.getElementById('exportFolderPath');
+    const selectExportFolderBtn = document.getElementById('selectExportFolderBtn');
     const confirmExport = document.getElementById('confirmExport');
     const gifExportModal = new bootstrap.Modal(document.getElementById('gifExportModal'));
     const gifFileName = document.getElementById('gifFileName');
@@ -60,15 +86,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const gifQuality = document.getElementById('gifQuality');
     const gifWidth = document.getElementById('gifWidth');
     const gifHeight = document.getElementById('gifHeight');
+    const gifFolderPath = document.getElementById('gifFolderPath');
+    const selectGifFolderBtn = document.getElementById('selectGifFolderBtn');
     const confirmGifExport = document.getElementById('confirmGifExport');
-    const cameraOptionsModal = new bootstrap.Modal(document.getElementById('cameraOptionsModal'));
+    const cameraSettingsModal = new bootstrap.Modal(document.getElementById('cameraSettingsModal'));
     const cameraSelect = document.getElementById('cameraSelect');
     const resolutionSelect = document.getElementById('resolutionSelect');
-    const mirrorPreview = document.getElementById('mirrorPreview');
-    const applyCameraOptions = document.getElementById('applyCameraOptions');
+    const mirrorCameraCheckbox = document.getElementById('mirrorCamera');
+    const autoEnableIdleTimeCheckbox = document.getElementById('autoEnableIdleTime');
+    const autoIdleTimeInput = document.getElementById('autoIdleTime');
+    const autoCountdownTimeInput = document.getElementById('autoCountdownTime');
+    const saveCameraSettingsBtn = document.getElementById('saveCameraSettings');
+
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = document.getElementById('loadingText');
-    const qualityOptions = document.querySelectorAll('.quality-option');
 
     // State variables
     let originalTemplate = null;
@@ -88,10 +119,16 @@ document.addEventListener('DOMContentLoaded', function() {
     let exportQuality = 1.0;
     let autoCaptureInterval = null;
     let autoCaptureTimeout = null;
-    let isAutoCaptureActive = false;
-    let currentCameraId = null;
-    let isPreviewDetached = false;
-    let detachedPreview = null;
+    let isAutoCapturing = false;
+    let currentAutoCaptureAreaIndex = 0;
+    let isPreviewMovable = false;
+    let isDraggingPreview = false;
+    let previewDragOffset = {
+        x: 0,
+        y: 0
+    };
+    let exportDirectoryHandle = null;
+    let gifDirectoryHandle = null;
 
     // Event listeners
     loadImageBtn.addEventListener('click', () => imageInput.click());
@@ -99,36 +136,61 @@ document.addEventListener('DOMContentLoaded', function() {
     detectAreasBtn.addEventListener('click', detectChromaAreas);
     exportBtn.addEventListener('click', () => exportModal.show());
     createGifBtn.addEventListener('click', () => gifExportModal.show());
-    autoCaptureBtn.addEventListener('click', toggleAutoCapture);
-    resetBtn.addEventListener('click', resetApp);
+    autoCaptureBtn.addEventListener('click', startAutoCapture);
+    cameraSettingsBtn.addEventListener('click', () => cameraSettingsModal.show());
+    togglePreviewBtn.addEventListener('click', toggleMovablePreview);
+    resetCanvasBtn.addEventListener('click', resetCanvas);
+    resetAppBtn.addEventListener('click', resetApp);
     toleranceSlider.addEventListener('input', updateTolerance);
     minAreaSlider.addEventListener('input', updateMinArea);
     featheringSlider.addEventListener('input', updateFeathering);
-    idleTimeSlider.addEventListener('input', updateIdleTime);
-    countdownTimeSlider.addEventListener('input', updateCountdownTime);
     startCameraBtn.addEventListener('click', startCamera);
     captureBtn.addEventListener('click', captureFromWebcam);
     applyCrop.addEventListener('click', applyCropToArea);
     confirmExport.addEventListener('click', exportImage);
     confirmGifExport.addEventListener('click', createGIF);
-    cameraOptionsBtn.addEventListener('click', showCameraOptions);
-    applyCameraOptions.addEventListener('click', applyCameraOptionsHandler);
-    detachPreviewBtn.addEventListener('click', toggleDetachPreview);
+    closePreviewBtn.addEventListener('click', closeMovablePreview);
+    movableStartAutoCaptureBtn.addEventListener('click', startAutoCapture);
+    movableStopAutoCaptureBtn.addEventListener('click', stopAutoCapture);
+    saveCameraSettingsBtn.addEventListener('click', saveCameraSettings);
+    movableMirrorPreviewCheckbox.addEventListener('change', updateMirrorPreview);
 
-    // Quality option event listeners
-    qualityOptions.forEach(option => {
-        option.addEventListener('click', function() {
-            qualityOptions.forEach(opt => opt.classList.remove('active'));
+    // Auto capture settings
+    enableIdleTimeCheckbox.addEventListener('change', toggleIdleTime);
+    movableEnableIdleTimeCheckbox.addEventListener('change', toggleMovableIdleTime);
+    autoEnableIdleTimeCheckbox.addEventListener('change', toggleAutoIdleTime);
+    idleTimeSlider.addEventListener('input', updateIdleTime);
+    countdownTimeSlider.addEventListener('input', updateCountdownTime);
+
+    // Export quality buttons
+    exportQualityButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            exportQualityButtons.forEach(btn => btn.classList.remove('active'));
             this.classList.add('active');
             exportQuality = parseFloat(this.getAttribute('data-quality'));
         });
     });
+
+    // Folder selection
+    selectExportFolderBtn.addEventListener('click', selectExportFolder);
+    selectGifFolderBtn.addEventListener('click', selectGifFolder);
 
     // Canvas event listeners for dragging
     photoCanvas.addEventListener('mousedown', startDrag);
     photoCanvas.addEventListener('mousemove', drag);
     photoCanvas.addEventListener('mouseup', endDrag);
     photoCanvas.addEventListener('mouseleave', endDrag);
+
+    // Movable preview drag functionality
+    const previewHeader = document.querySelector('.preview-header');
+    previewHeader.addEventListener('mousedown', startPreviewDrag);
+    document.addEventListener('mousemove', dragPreview);
+    document.addEventListener('mouseup', endPreviewDrag);
+
+    // Initialize UI
+    toggleIdleTime();
+    toggleMovableIdleTime();
+    toggleAutoIdleTime();
 
     // Functions
     function handleTemplateUpload(event) {
@@ -200,6 +262,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateCountdownTime() {
         countdownTimeValue.textContent = countdownTimeSlider.value;
+    }
+
+    function toggleIdleTime() {
+        idleTimeContainer.style.display = enableIdleTimeCheckbox.checked ? 'block' : 'none';
+    }
+
+    function toggleMovableIdleTime() {
+        movableIdleTimeContainer.style.display = movableEnableIdleTimeCheckbox.checked ? 'block' : 'none';
+    }
+
+    function toggleAutoIdleTime() {
+        // This would be used in camera settings modal
     }
 
     function detectChromaAreas() {
@@ -405,7 +479,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateResultsUI() {
-        resultsCount.textContent = `${detectedAreas.length} areas`;
+        resultsCount.textContent = `${detectedAreas.length} areas detected`;
 
         // Clear previous results
         detectionResults.innerHTML = '';
@@ -447,9 +521,16 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <input type="range" class="form-range scale" min="0.1" max="3" step="0.1" value="${area.photoScale}" data-area-id="${area.id}">
                                 <span class="value-display scale-value">${area.photoScale}</span>
                             </div>
-                            <button class="btn btn-sm btn-outline-primary load-photo-btn" data-area-id="${area.id}">
-                                <i class="bi bi-upload me-1"></i>${area.photo ? 'Change Photo' : 'Load Photo'}
-                            </button>
+                            <div class="photo-controls">
+                                <button class="btn-small primary load-photo-btn" data-area-id="${area.id}">
+                                    <i class="bi bi-upload me-1"></i>${area.photo ? 'Change' : 'Load'}
+                                </button>
+                                ${area.photo ? `
+                                <button class="btn-small danger delete-photo-btn" data-area-id="${area.id}">
+                                    <i class="bi bi-trash me-1"></i>Delete
+                                </button>
+                                ` : ''}
+                            </div>
                         </div>
                     `;
 
@@ -461,6 +542,13 @@ document.addEventListener('DOMContentLoaded', function() {
             button.addEventListener('click', function() {
                 const areaId = parseInt(this.getAttribute('data-area-id'));
                 showCropModal(areaId);
+            });
+        });
+
+        document.querySelectorAll('.delete-photo-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const areaId = parseInt(this.getAttribute('data-area-id'));
+                deletePhoto(areaId);
             });
         });
 
@@ -499,6 +587,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         });
+    }
+
+    function deletePhoto(areaId) {
+        const area = detectedAreas.find(a => a.id === areaId);
+        if (area) {
+            area.photo = null;
+            redrawPhotos();
+            updateResultsUI();
+            statusText.textContent = `Photo deleted from area ${areaId}`;
+
+            // Update capture overlay
+            updateCaptureOverlay();
+            updateMovableCaptureOverlay();
+        }
     }
 
     function showCropModal(areaId) {
@@ -597,239 +699,101 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function showCameraOptions() {
-        // Populate camera options if not already done
-        if (cameraSelect.children.length <= 1) {
-            populateCameraOptions();
-        }
-        cameraOptionsModal.show();
-    }
-
-    function populateCameraOptions() {
-        navigator.mediaDevices.enumerateDevices()
-            .then(devices => {
-                const videoDevices = devices.filter(device => device.kind === 'videoinput');
-                cameraSelect.innerHTML = '<option value="">Select Camera</option>';
-
-                videoDevices.forEach((device, index) => {
-                    const option = document.createElement('option');
-                    option.value = device.deviceId;
-                    option.text = device.label || `Camera ${index + 1}`;
-                    if (currentCameraId === device.deviceId) {
-                        option.selected = true;
-                    }
-                    cameraSelect.appendChild(option);
-                });
-            })
-            .catch(err => {
-                console.error('Error enumerating devices:', err);
-            });
-    }
-
-    function applyCameraOptionsHandler() {
-        const selectedCamera = cameraSelect.value;
-        const resolution = resolutionSelect.value;
-        const isMirrored = mirrorPreview.checked;
-
-        // Apply mirror effect if needed
-        if (isMirrored) {
-            webcamVideo.style.transform = 'scaleX(-1)';
-        } else {
-            webcamVideo.style.transform = 'scaleX(1)';
-        }
-
-        // Restart camera with new settings if camera is already running
-        if (currentStream) {
-            stopCamera();
-            startCameraWithOptions(selectedCamera, resolution);
-        }
-
-        cameraOptionsModal.hide();
-    }
-
     function startCamera() {
         if (currentStream) {
-            stopCamera();
-            return;
-        }
-
-        // Use previously selected camera or default
-        const cameraId = currentCameraId || null;
-        const resolution = resolutionSelect.value || '1280x720';
-
-        startCameraWithOptions(cameraId, resolution);
-    }
-
-    function startCameraWithOptions(cameraId, resolution) {
-        const [width, height] = resolution.split('x').map(Number);
-
-        const constraints = {
-            video: {
-                width: {
-                    ideal: width
-                },
-                height: {
-                    ideal: height
-                }
-            }
-        };
-
-        if (cameraId) {
-            constraints.video.deviceId = {
-                exact: cameraId
-            };
-        }
-
-        navigator.mediaDevices.getUserMedia(constraints)
-            .then(stream => {
-                currentStream = stream;
-                currentCameraId = cameraId;
-                webcamVideo.srcObject = stream;
-                webcamVideo.classList.remove('d-none');
-                startCameraBtn.classList.add('active');
-                statusText.textContent = 'Camera started. Ready to capture.';
-
-                // Set up the capture overlay once video is loaded
-                webcamVideo.addEventListener('loadedmetadata', function() {
-                    captureOverlay.width = webcamVideo.videoWidth;
-                    captureOverlay.height = webcamVideo.videoHeight;
-                    captureOverlay.classList.remove('d-none');
-                    updateCaptureOverlay();
-
-                    // Update detached preview if active
-                    if (isPreviewDetached && detachedPreview) {
-                        const detachedVideo = detachedPreview.querySelector('#webcamVideo');
-                        const detachedOverlay = detachedPreview.querySelector('#captureOverlay');
-                        detachedVideo.srcObject = stream;
-                        detachedOverlay.width = webcamVideo.videoWidth;
-                        detachedOverlay.height = webcamVideo.videoHeight;
-                    }
-                });
-            })
-            .catch(err => {
-                console.error('Error accessing camera:', err);
-                statusText.textContent = 'Error accessing camera.';
-            });
-    }
-
-    function stopCamera() {
-        if (currentStream) {
+            // Stop the current stream if already running
             currentStream.getTracks().forEach(track => track.stop());
             currentStream = null;
             webcamVideo.classList.add('d-none');
             captureOverlay.classList.add('d-none');
+            movableWebcamVideo.classList.add('d-none');
+            movableCaptureOverlay.classList.add('d-none');
             startCameraBtn.classList.remove('active');
-
-            // Also stop detached preview if active
-            if (isPreviewDetached && detachedPreview) {
-                const detachedVideo = detachedPreview.querySelector('#webcamVideo');
-                detachedVideo.srcObject = null;
-            }
-
             statusText.textContent = 'Camera stopped.';
+            return;
         }
+
+        // Get available cameras
+        navigator.mediaDevices.enumerateDevices()
+            .then(devices => {
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+                // Populate camera select
+                cameraSelect.innerHTML = '<option value="">Select Camera</option>';
+                videoDevices.forEach((device, index) => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.text = device.label || `Camera ${index + 1}`;
+                    cameraSelect.appendChild(option);
+                });
+
+                if (videoDevices.length > 0) {
+                    // Get selected resolution
+                    const resolution = resolutionSelect.value.split('x');
+                    const width = parseInt(resolution[0]);
+                    const height = parseInt(resolution[1]);
+
+                    // Try to get the selected camera or default to first
+                    const selectedCamera = cameraSelect.value || videoDevices[0].deviceId;
+
+                    const constraints = {
+                        video: {
+                            deviceId: selectedCamera ? {
+                                exact: selectedCamera
+                            } : undefined,
+                            width: {
+                                ideal: width
+                            },
+                            height: {
+                                ideal: height
+                            }
+                        }
+                    };
+
+                    navigator.mediaDevices.getUserMedia(constraints)
+                        .then(stream => {
+                            currentStream = stream;
+                            webcamVideo.srcObject = stream;
+                            webcamVideo.classList.remove('d-none');
+                            movableWebcamVideo.srcObject = stream;
+                            movableWebcamVideo.classList.remove('d-none');
+                            startCameraBtn.classList.add('active');
+                            statusText.textContent = 'Camera started. Ready to capture.';
+
+                            // Apply mirror effect if enabled
+                            updateMirrorPreview();
+
+                            // Set up the capture overlay once video is loaded
+                            webcamVideo.addEventListener('loadedmetadata', function() {
+                                captureOverlay.width = webcamVideo.videoWidth;
+                                captureOverlay.height = webcamVideo.videoHeight;
+                                captureOverlay.classList.remove('d-none');
+                                updateCaptureOverlay();
+
+                                movableCaptureOverlay.width = movableWebcamVideo.videoWidth;
+                                movableCaptureOverlay.height = movableWebcamVideo.videoHeight;
+                                movableCaptureOverlay.classList.remove('d-none');
+                                updateMovableCaptureOverlay();
+                            });
+                        })
+                        .catch(err => {
+                            console.error('Error accessing camera:', err);
+                            statusText.textContent = 'Error accessing camera.';
+                        });
+                } else {
+                    statusText.textContent = 'No cameras found.';
+                }
+            })
+            .catch(err => {
+                console.error('Error enumerating devices:', err);
+                statusText.textContent = 'Error accessing camera devices.';
+            });
     }
 
-    function toggleDetachPreview() {
-        if (isPreviewDetached) {
-            // Reattach preview
-            if (detachedPreview) {
-                document.body.removeChild(detachedPreview);
-                detachedPreview = null;
-            }
-
-            // Show the preview in the sidebar again
-            webcamPreview.classList.remove('d-none');
-            detachPreviewBtn.innerHTML = '<i class="bi bi-arrows-move"></i> Detach Preview';
-            isPreviewDetached = false;
-        } else {
-            // Detach preview
-            if (!currentStream) {
-                statusText.textContent = 'Please start the camera first.';
-                return;
-            }
-
-            // Create detached preview window
-            detachedPreview = document.createElement('div');
-            detachedPreview.className = 'detachable-preview';
-            detachedPreview.innerHTML = `
-                        <div class="webcam-preview">
-                            <video id="webcamVideoDetached" autoplay playsinline></video>
-                            <canvas id="captureOverlayDetached"></canvas>
-                            <div id="countdownOverlayDetached" class="countdown-overlay d-none">
-                                <div class="countdown-number">10</div>
-                                <div class="countdown-message">Get ready!</div>
-                            </div>
-                        </div>
-                        <div class="preview-controls">
-                            <button class="btn btn-sm btn-outline-secondary" id="reattachPreviewBtn">
-                                <i class="bi bi-arrows-angle-contract"></i> Reattach
-                            </button>
-                        </div>
-                    `;
-
-            document.body.appendChild(detachedPreview);
-
-            // Copy current stream to detached preview
-            const detachedVideo = detachedPreview.querySelector('#webcamVideoDetached');
-            const detachedOverlay = detachedPreview.querySelector('#captureOverlayDetached');
-            const detachedCountdown = detachedPreview.querySelector('#countdownOverlayDetached');
-
-            detachedVideo.srcObject = currentStream;
-            detachedVideo.classList.remove('d-none');
-            detachedOverlay.width = captureOverlay.width;
-            detachedOverlay.height = captureOverlay.height;
-            detachedOverlay.classList.remove('d-none');
-
-            // Make the detached preview draggable
-            makeElementDraggable(detachedPreview);
-
-            // Add reattach button event listener
-            detachedPreview.querySelector('#reattachPreviewBtn').addEventListener('click', toggleDetachPreview);
-
-            // Hide the preview in the sidebar
-            webcamPreview.classList.add('d-none');
-            detachPreviewBtn.innerHTML = '<i class="bi bi-arrows-angle-contract"></i> Reattach Preview';
-            isPreviewDetached = true;
-        }
-    }
-
-    function makeElementDraggable(element) {
-        let pos1 = 0,
-            pos2 = 0,
-            pos3 = 0,
-            pos4 = 0;
-        element.onmousedown = dragMouseDown;
-
-        function dragMouseDown(e) {
-            e = e || window.event;
-            e.preventDefault();
-            // Get the mouse cursor position at startup
-            pos3 = e.clientX;
-            pos4 = e.clientY;
-            document.onmouseup = closeDragElement;
-            // Call a function whenever the cursor moves
-            document.onmousemove = elementDrag;
-        }
-
-        function elementDrag(e) {
-            e = e || window.event;
-            e.preventDefault();
-            // Calculate the new cursor position
-            pos1 = pos3 - e.clientX;
-            pos2 = pos4 - e.clientY;
-            pos3 = e.clientX;
-            pos4 = e.clientY;
-            // Set the element's new position
-            element.style.top = (element.offsetTop - pos2) + "px";
-            element.style.left = (element.offsetLeft - pos1) + "px";
-        }
-
-        function closeDragElement() {
-            // Stop moving when mouse button is released
-            document.onmouseup = null;
-            document.onmousemove = null;
-        }
+    function updateMirrorPreview() {
+        const isMirrored = movableMirrorPreviewCheckbox.checked || mirrorCameraCheckbox.checked;
+        webcamVideo.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+        movableWebcamVideo.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
     }
 
     function updateCaptureOverlay() {
@@ -842,13 +806,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // All areas have photos, clear the overlay
             captureOverlayCtx.clearRect(0, 0, captureOverlay.width, captureOverlay.height);
             currentCaptureArea = null;
-
-            // Also update detached preview if active
-            if (isPreviewDetached && detachedPreview) {
-                const detachedOverlay = detachedPreview.querySelector('#captureOverlayDetached');
-                const detachedCtx = detachedOverlay.getContext('2d');
-                detachedCtx.clearRect(0, 0, detachedOverlay.width, detachedOverlay.height);
-            }
             return;
         }
 
@@ -911,43 +868,69 @@ document.addEventListener('DOMContentLoaded', function() {
             width: boxWidth,
             height: boxHeight
         };
+    }
 
-        // Also update detached preview if active
-        if (isPreviewDetached && detachedPreview) {
-            const detachedOverlay = detachedPreview.querySelector('#captureOverlayDetached');
-            const detachedCtx = detachedOverlay.getContext('2d');
+    function updateMovableCaptureOverlay() {
+        if (!movableWebcamVideo.videoWidth || !detectedAreas.length) return;
 
-            // Clear the overlay
-            detachedCtx.clearRect(0, 0, detachedOverlay.width, detachedOverlay.height);
+        // Find the next area without a photo
+        const emptyArea = detectedAreas.find(area => !area.photo);
 
-            // Draw a semi-transparent overlay outside the dimension box
-            detachedCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            detachedCtx.fillRect(0, 0, detachedOverlay.width, detachedOverlay.height);
-
-            // Clear the inside of the dimension box
-            detachedCtx.clearRect(boxX, boxY, boxWidth, boxHeight);
-
-            // Draw the dimension box border
-            detachedCtx.strokeStyle = '#ffc107';
-            detachedCtx.lineWidth = 3;
-            detachedCtx.strokeRect(boxX, boxY, boxWidth, boxHeight);
-
-            // Add dimension label
-            detachedCtx.fillStyle = '#ffc107';
-            detachedCtx.font = 'bold 14px Arial';
-            detachedCtx.fillText(
-                `${emptyArea.bounds.width} × ${emptyArea.bounds.height}`,
-                boxX + 10,
-                boxY + 20
-            );
-
-            // Add area ID label
-            detachedCtx.fillText(
-                `Area ${emptyArea.id}`,
-                boxX + 10,
-                boxY + boxHeight - 10
-            );
+        if (!emptyArea) {
+            // All areas have photos, clear the overlay
+            movableCaptureOverlayCtx.clearRect(0, 0, movableCaptureOverlay.width, movableCaptureOverlay.height);
+            return;
         }
+
+        // Clear the overlay
+        movableCaptureOverlayCtx.clearRect(0, 0, movableCaptureOverlay.width, movableCaptureOverlay.height);
+
+        // Calculate the dimension box for the capture area
+        const videoAspect = movableCaptureOverlay.width / movableCaptureOverlay.height;
+        const areaAspect = emptyArea.bounds.width / emptyArea.bounds.height;
+
+        let boxWidth, boxHeight;
+
+        if (videoAspect > areaAspect) {
+            // Video is wider than the area aspect ratio
+            boxHeight = movableCaptureOverlay.height;
+            boxWidth = boxHeight * areaAspect;
+        } else {
+            // Video is taller than the area aspect ratio
+            boxWidth = movableCaptureOverlay.width;
+            boxHeight = boxWidth / areaAspect;
+        }
+
+        const boxX = (movableCaptureOverlay.width - boxWidth) / 2;
+        const boxY = (movableCaptureOverlay.height - boxHeight) / 2;
+
+        // Draw a semi-transparent overlay outside the dimension box
+        movableCaptureOverlayCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        movableCaptureOverlayCtx.fillRect(0, 0, movableCaptureOverlay.width, movableCaptureOverlay.height);
+
+        // Clear the inside of the dimension box
+        movableCaptureOverlayCtx.clearRect(boxX, boxY, boxWidth, boxHeight);
+
+        // Draw the dimension box border
+        movableCaptureOverlayCtx.strokeStyle = '#ffc107';
+        movableCaptureOverlayCtx.lineWidth = 3;
+        movableCaptureOverlayCtx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+        // Add dimension label
+        movableCaptureOverlayCtx.fillStyle = '#ffc107';
+        movableCaptureOverlayCtx.font = 'bold 14px Arial';
+        movableCaptureOverlayCtx.fillText(
+            `${emptyArea.bounds.width} × ${emptyArea.bounds.height}`,
+            boxX + 10,
+            boxY + 20
+        );
+
+        // Add area ID label
+        movableCaptureOverlayCtx.fillText(
+            `Area ${emptyArea.id}`,
+            boxX + 10,
+            boxY + boxHeight - 10
+        );
     }
 
     function captureFromWebcam() {
@@ -962,11 +945,17 @@ document.addEventListener('DOMContentLoaded', function() {
         tempCanvas.width = dimensionBox.width;
         tempCanvas.height = dimensionBox.height;
 
+        // Apply mirror effect if enabled
+        if (movableMirrorPreviewCheckbox.checked || mirrorCameraCheckbox.checked) {
+            tempCtx.translate(tempCanvas.width, 0);
+            tempCtx.scale(-1, 1);
+        }
+
         // Draw the current video frame at full resolution
         tempCtx.drawImage(
             webcamVideo,
             dimensionBox.x, dimensionBox.y, dimensionBox.width, dimensionBox.height, // source rect (from video)
-            0, 0, dimensionBox.width, dimensionBox.height // destination rect (to canvas)
+            0, 0, tempCanvas.width, tempCanvas.height // destination rect (to canvas)
         );
 
         // Create an image from the canvas
@@ -983,253 +972,354 @@ document.addEventListener('DOMContentLoaded', function() {
             updateResultsUI();
             statusText.textContent = `Photo captured for area ${currentCaptureArea.id}`;
 
+            // Show photo captured message
+            showPhotoCaptured();
+
             // Update the capture overlay for the next empty area
             updateCaptureOverlay();
+            updateMovableCaptureOverlay();
         };
         img.src = tempCanvas.toDataURL('image/png');
     }
 
-    function toggleAutoCapture() {
+    function showPhotoCaptured() {
+        photoCaptured.style.display = 'block';
+        movablePhotoCaptured.style.display = 'block';
+
+        setTimeout(() => {
+            photoCaptured.style.display = 'none';
+            movablePhotoCaptured.style.display = 'none';
+        }, 2000);
+    }
+
+    function startAutoCapture() {
         if (!currentStream) {
             statusText.textContent = 'Please start the camera first.';
             return;
         }
 
-        if (!detectedAreas.length) {
-            statusText.textContent = 'Please detect areas first.';
+        if (detectedAreas.length === 0) {
+            statusText.textContent = 'No areas detected. Please detect areas first.';
             return;
         }
 
-        if (isAutoCaptureActive) {
-            // Stop auto capture
-            stopAutoCapture();
-            autoCaptureBtn.textContent = 'Auto Capture';
-            autoCaptureBtn.classList.remove('active');
-            statusText.textContent = 'Auto capture stopped.';
-        } else {
-            // Start auto capture
-            isAutoCaptureActive = true;
-            autoCaptureBtn.textContent = 'Stop Auto Capture';
-            autoCaptureBtn.classList.add('active');
-            statusText.textContent = 'Auto capture started. Getting ready...';
+        // Find the first empty area
+        currentAutoCaptureAreaIndex = detectedAreas.findIndex(area => !area.photo);
 
-            startAutoCaptureSequence();
+        if (currentAutoCaptureAreaIndex === -1) {
+            statusText.textContent = 'All areas already have photos.';
+            return;
         }
+
+        isAutoCapturing = true;
+        autoCaptureBtn.classList.add('active');
+        movableStartAutoCaptureBtn.classList.add('active');
+        statusText.textContent = 'Auto capture sequence started.';
+
+        // Start the auto capture sequence
+        startAutoCaptureSequence();
     }
 
     function startAutoCaptureSequence() {
-        // Find the next area without a photo
-        const emptyArea = detectedAreas.find(area => !area.photo);
+        if (!isAutoCapturing) return;
 
-        if (!emptyArea) {
-            // All areas are filled
-            stopAutoCapture();
-            statusText.textContent = 'All areas are filled. Auto capture completed.';
-            return;
+        // Get the current area to capture
+        currentCaptureArea = detectedAreas[currentAutoCaptureAreaIndex];
+
+        // Get idle and countdown times
+        const enableIdle = enableIdleTimeCheckbox.checked || movableEnableIdleTimeCheckbox.checked;
+        const idleTime = enableIdle ? (parseInt(idleTimeSlider.value) || parseInt(movableIdleTimeInput.value)) * 1000 : 0;
+        const countdownTime = (parseInt(countdownTimeSlider.value) || parseInt(movableCountdownTimeInput.value)) * 1000;
+
+        // Show idle message if enabled
+        if (enableIdle && idleTime > 0) {
+            showCountdownMessage('Get ready! Photo session starting soon...', true);
+
+            // After idle time, start countdown
+            setTimeout(() => {
+                if (!isAutoCapturing) return;
+                startCountdown(countdownTime);
+            }, idleTime);
+        } else {
+            // Start countdown immediately
+            startCountdown(countdownTime);
         }
-
-        currentCaptureArea = emptyArea;
-        updateCaptureOverlay();
-
-        const idleTime = parseInt(idleTimeSlider.value) * 1000;
-        const countdownTime = parseInt(countdownTimeSlider.value) * 1000;
-
-        // Start idle countdown
-        startCountdown(idleTime, countdownTime, 'Get ready!', 'Photo will be taken soon!');
     }
 
-    function startCountdown(idleTime, countdownTime, idleMessage, countdownMessage) {
-        let remainingTime = idleTime;
-        const countdownStep = 1000; // Update every second
+    function startCountdown(countdownTime) {
+        if (!isAutoCapturing) return;
 
-        // Show countdown overlay
-        countdownOverlay.classList.remove('d-none');
-        countdownNumber.textContent = Math.ceil(remainingTime / 1000);
-        countdownMessage.textContent = idleMessage;
+        // Show countdown message
+        showCountdownMessage('Photo will be taken in:', true);
 
-        // Also update detached preview if active
-        if (isPreviewDetached && detachedPreview) {
-            const detachedCountdown = detachedPreview.querySelector('#countdownOverlayDetached');
-            const detachedNumber = detachedCountdown.querySelector('.countdown-number');
-            const detachedMsg = detachedCountdown.querySelector('.countdown-message');
-            detachedCountdown.classList.remove('d-none');
-            detachedNumber.textContent = Math.ceil(remainingTime / 1000);
-            detachedMsg.textContent = idleMessage;
-        }
+        // Start countdown
+        let countdown = countdownTime / 1000;
+        showCountdownDisplay(countdown);
 
         const countdownInterval = setInterval(() => {
-            remainingTime -= countdownStep;
-            countdownNumber.textContent = Math.ceil(remainingTime / 1000);
-
-            // Also update detached preview if active
-            if (isPreviewDetached && detachedPreview) {
-                const detachedCountdown = detachedPreview.querySelector('#countdownOverlayDetached');
-                const detachedNumber = detachedCountdown.querySelector('.countdown-number');
-                detachedNumber.textContent = Math.ceil(remainingTime / 1000);
-            }
-
-            if (remainingTime <= 0) {
+            if (!isAutoCapturing) {
                 clearInterval(countdownInterval);
-
-                // Start photo countdown
-                startPhotoCountdown(countdownTime, countdownMessage);
-            }
-        }, countdownStep);
-
-        // Store the interval ID so we can clear it if needed
-        autoCaptureInterval = countdownInterval;
-    }
-
-    function startPhotoCountdown(countdownTime, message) {
-        let remainingTime = countdownTime;
-        const countdownStep = 1000; // Update every second
-
-        countdownMessage.textContent = message;
-
-        // Also update detached preview if active
-        if (isPreviewDetached && detachedPreview) {
-            const detachedCountdown = detachedPreview.querySelector('#countdownOverlayDetached');
-            const detachedMsg = detachedCountdown.querySelector('.countdown-message');
-            detachedMsg.textContent = message;
-        }
-
-        const countdownInterval = setInterval(() => {
-            remainingTime -= countdownStep;
-            countdownNumber.textContent = Math.ceil(remainingTime / 1000);
-
-            // Also update detached preview if active
-            if (isPreviewDetached && detachedPreview) {
-                const detachedCountdown = detachedPreview.querySelector('#countdownOverlayDetached');
-                const detachedNumber = detachedCountdown.querySelector('.countdown-number');
-                detachedNumber.textContent = Math.ceil(remainingTime / 1000);
+                hideCountdowns();
+                return;
             }
 
-            if (remainingTime <= 0) {
+            countdown--;
+
+            // Change color to red in the last 3 seconds
+            if (countdown <= 3) {
+                countdownDisplay.classList.add('countdown-warning');
+                movableCountdownDisplay.classList.add('countdown-warning');
+            }
+
+            if (countdown > 0) {
+                showCountdownDisplay(countdown);
+            } else {
                 clearInterval(countdownInterval);
+                hideCountdowns();
 
-                // Take the photo
-                takeAutoCapturePhoto();
-            }
-        }, countdownStep);
+                // Capture the photo
+                captureFromWebcam();
 
-        // Store the interval ID so we can clear it if needed
-        autoCaptureInterval = countdownInterval;
-    }
+                // Move to next area if available
+                setTimeout(() => {
+                    if (!isAutoCapturing) return;
 
-    function takeAutoCapturePhoto() {
-        // Hide countdown overlay
-        countdownOverlay.classList.add('d-none');
+                    currentAutoCaptureAreaIndex = detectedAreas.findIndex(area => !area.photo);
 
-        // Also update detached preview if active
-        if (isPreviewDetached && detachedPreview) {
-            const detachedCountdown = detachedPreview.querySelector('#countdownOverlayDetached');
-            detachedCountdown.classList.add('d-none');
-        }
-
-        // Capture the photo
-        captureFromWebcam();
-
-        // Wait a moment then move to next area
-        setTimeout(() => {
-            if (isAutoCaptureActive) {
-                startAutoCaptureSequence();
+                    if (currentAutoCaptureAreaIndex !== -1) {
+                        // Continue to next area
+                        startAutoCaptureSequence();
+                    } else {
+                        // All areas captured
+                        stopAutoCapture();
+                        statusText.textContent = 'Auto capture sequence completed. All areas filled.';
+                    }
+                }, 1000);
             }
         }, 1000);
     }
 
     function stopAutoCapture() {
-        isAutoCaptureActive = false;
+        isAutoCapturing = false;
+        autoCaptureBtn.classList.remove('active');
+        movableStartAutoCaptureBtn.classList.remove('active');
+        hideCountdowns();
+        statusText.textContent = 'Auto capture stopped.';
+    }
 
-        if (autoCaptureInterval) {
-            clearInterval(autoCaptureInterval);
-            autoCaptureInterval = null;
-        }
+    function showCountdownMessage(message, showInMovable = false) {
+        countdownMessage.textContent = message;
+        countdownMessage.style.display = 'block';
 
-        if (autoCaptureTimeout) {
-            clearTimeout(autoCaptureTimeout);
-            autoCaptureTimeout = null;
-        }
-
-        // Hide countdown overlay
-        countdownOverlay.classList.add('d-none');
-
-        // Also update detached preview if active
-        if (isPreviewDetached && detachedPreview) {
-            const detachedCountdown = detachedPreview.querySelector('#countdownOverlayDetached');
-            detachedCountdown.classList.add('d-none');
+        if (showInMovable && movablePreview.style.display !== 'none') {
+            movableCountdownMessage.textContent = message;
+            movableCountdownMessage.style.display = 'block';
         }
     }
 
-    function exportImage() {
+    function showCountdownDisplay(number, showInMovable = false) {
+        countdownDisplay.textContent = number;
+        countdownDisplay.style.display = 'block';
+
+        if (showInMovable && movablePreview.style.display !== 'none') {
+            movableCountdownDisplay.textContent = number;
+            movableCountdownDisplay.style.display = 'block';
+        }
+    }
+
+    function hideCountdowns() {
+        countdownMessage.style.display = 'none';
+        countdownDisplay.style.display = 'none';
+        countdownDisplay.classList.remove('countdown-warning');
+        movableCountdownMessage.style.display = 'none';
+        movableCountdownDisplay.style.display = 'none';
+        movableCountdownDisplay.classList.remove('countdown-warning');
+    }
+
+    function toggleMovablePreview() {
+        if (movablePreview.style.display === 'none' || movablePreview.style.display === '') {
+            movablePreview.style.display = 'block';
+            togglePreviewBtn.classList.add('active');
+
+            // Update the movable preview overlay
+            updateMovableCaptureOverlay();
+        } else {
+            closeMovablePreview();
+        }
+    }
+
+    function closeMovablePreview() {
+        movablePreview.style.display = 'none';
+        togglePreviewBtn.classList.remove('active');
+    }
+
+    function startPreviewDrag(e) {
+        isDraggingPreview = true;
+        const rect = movablePreview.getBoundingClientRect();
+        previewDragOffset.x = e.clientX - rect.left;
+        previewDragOffset.y = e.clientY - rect.top;
+        movablePreview.style.cursor = 'grabbing';
+    }
+
+    function dragPreview(e) {
+        if (!isDraggingPreview) return;
+
+        movablePreview.style.left = (e.clientX - previewDragOffset.x) + 'px';
+        movablePreview.style.top = (e.clientY - previewDragOffset.y) + 'px';
+    }
+
+    function endPreviewDrag() {
+        isDraggingPreview = false;
+        movablePreview.style.cursor = 'default';
+    }
+
+    function saveCameraSettings() {
+        // Save settings and close modal
+        cameraSettingsModal.hide();
+        statusText.textContent = 'Camera settings saved.';
+
+        // Restart camera if it's running to apply new settings
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+            currentStream = null;
+            startCamera();
+        }
+    }
+
+    async function selectExportFolder() {
+        if ('showDirectoryPicker' in window) {
+            try {
+                exportDirectoryHandle = await window.showDirectoryPicker();
+                exportFolderPath.value = exportDirectoryHandle.name;
+            } catch (err) {
+                console.error('Error selecting folder:', err);
+                // Fallback to download
+                exportFolderPath.value = 'Downloads (fallback)';
+            }
+        } else {
+            // Browser doesn't support File System Access API
+            exportFolderPath.value = 'Downloads (fallback)';
+        }
+    }
+
+    async function selectGifFolder() {
+        if ('showDirectoryPicker' in window) {
+            try {
+                gifDirectoryHandle = await window.showDirectoryPicker();
+                gifFolderPath.value = gifDirectoryHandle.name;
+            } catch (err) {
+                console.error('Error selecting folder:', err);
+                // Fallback to download
+                gifFolderPath.value = 'Downloads (fallback)';
+            }
+        } else {
+            // Browser doesn't support File System Access API
+            gifFolderPath.value = 'Downloads (fallback)';
+        }
+    }
+
+    async function exportImage() {
         if (!originalTemplate) {
             statusText.textContent = 'Please load a template first.';
             return;
         }
 
-        const fileName = exportFileName.value || '';
+        const fileName = exportFileName.value || 'chroma-key-result';
         const dpi = parseInt(exportDPI.value);
 
         // Show loading overlay
         loadingOverlay.style.display = 'flex';
 
         // Use setTimeout to allow the UI to update before starting the heavy processing
-        setTimeout(() => {
-            // Calculate scale factor for DPI
-            const scale = dpi / 96;
+        setTimeout(async () => {
+            try {
+                // Calculate scale factor for DPI
+                const scale = dpi / 96;
 
-            // Create a high-resolution canvas
-            const exportCanvas = document.createElement('canvas');
-            exportCanvas.width = templateCanvas.width * scale;
-            exportCanvas.height = templateCanvas.height * scale;
-            const exportCtx = exportCanvas.getContext('2d');
+                // Create a high-resolution canvas
+                const exportCanvas = document.createElement('canvas');
+                exportCanvas.width = templateCanvas.width * scale;
+                exportCanvas.height = templateCanvas.height * scale;
+                const exportCtx = exportCanvas.getContext('2d');
 
-            // Set ultra-high quality rendering
-            exportCtx.imageSmoothingEnabled = true;
-            exportCtx.imageSmoothingQuality = 'high';
+                // Set ultra-high quality rendering
+                exportCtx.imageSmoothingEnabled = true;
+                exportCtx.imageSmoothingQuality = 'high';
 
-            // Draw the photos at high resolution with premium quality
-            detectedAreas.forEach(area => {
-                if (area.photo) {
-                    const scaledWidth = area.photo.width * area.photoScale * scale;
-                    const scaledHeight = area.photo.height * area.photoScale * scale;
+                // Draw the photos at high resolution with premium quality
+                detectedAreas.forEach(area => {
+                    if (area.photo) {
+                        const scaledWidth = area.photo.width * area.photoScale * scale;
+                        const scaledHeight = area.photo.height * area.photoScale * scale;
 
-                    // Use high-quality image rendering
-                    exportCtx.drawImage(
-                        area.photo,
-                        area.photoX * scale,
-                        area.photoY * scale,
-                        scaledWidth,
-                        scaledHeight
-                    );
-                }
-            });
+                        // Use high-quality image rendering
+                        exportCtx.drawImage(
+                            area.photo,
+                            area.photoX * scale,
+                            area.photoY * scale,
+                            scaledWidth,
+                            scaledHeight
+                        );
+                    }
+                });
 
-            // Draw the template at high resolution
-            exportCtx.drawImage(
-                templateCanvas,
-                0, 0, templateCanvas.width, templateCanvas.height,
-                0, 0, exportCanvas.width, exportCanvas.height
-            );
+                // Draw the template at high resolution
+                exportCtx.drawImage(
+                    templateCanvas,
+                    0, 0, templateCanvas.width, templateCanvas.height,
+                    0, 0, exportCanvas.width, exportCanvas.height
+                );
 
-            // Convert to blob with specified quality and trigger download
-            exportCanvas.toBlob(function(blob) {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${fileName}.jpg`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                // Convert to blob with specified quality
+                exportCanvas.toBlob(async function(blob) {
+                    try {
+                        if (exportDirectoryHandle) {
+                            // Save to selected folder using File System Access API
+                            const fileHandle = await exportDirectoryHandle.getFileHandle(`${fileName}.jpg`, {
+                                create: true
+                            });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(blob);
+                            await writable.close();
+                            statusText.textContent = `Premium quality image saved as ${fileName}.jpg at ${dpi} DPI`;
+                        } else {
+                            // Fallback to download
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${fileName}.jpg`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            statusText.textContent = `Premium quality image exported as ${fileName}.jpg at ${dpi} DPI`;
+                        }
+                    } catch (err) {
+                        console.error('Error saving file:', err);
+                        // Fallback to download
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${fileName}.jpg`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        statusText.textContent = `Premium quality image exported as ${fileName}.jpg at ${dpi} DPI`;
+                    }
 
-                statusText.textContent = `Premium quality image exported as ${fileName}.jpg at ${dpi} DPI`;
+                    loadingOverlay.style.display = 'none';
+                    exportModal.hide();
+                }, 'image/jpeg', exportQuality);
+            } catch (error) {
+                console.error('Error exporting image:', error);
                 loadingOverlay.style.display = 'none';
-                exportModal.hide();
-            }, 'image/jpeg', exportQuality);
+                statusText.textContent = 'Error exporting image. Please try again.';
+            }
         }, 100);
     }
 
-    function createGIF() {
+    async function createGIF() {
         // Get photos with their current cropping and scaling
         const photos = detectedAreas
             .filter(area => area.photo)
@@ -1251,7 +1341,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadingText.textContent = 'Creating high-quality GIF...';
 
         // Use setTimeout to allow the UI to update
-        setTimeout(() => {
+        setTimeout(async () => {
             try {
                 // Create GIF instance with high quality settings
                 const gif = new GIF({
@@ -1316,20 +1406,45 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 // Render the GIF
-                gif.on('finished', function(blob) {
-                    // Create download link
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `${fileName}.gif`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
+                gif.on('finished', async function(blob) {
+                    try {
+                        if (gifDirectoryHandle) {
+                            // Save to selected folder using File System Access API
+                            const fileHandle = await gifDirectoryHandle.getFileHandle(`${fileName}.gif`, {
+                                create: true
+                            });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(blob);
+                            await writable.close();
+                            statusText.textContent = `High-quality GIF saved as ${fileName}.gif with ${photos.length} frames`;
+                        } else {
+                            // Fallback to download
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${fileName}.gif`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            statusText.textContent = `High-quality GIF exported as ${fileName}.gif with ${photos.length} frames`;
+                        }
+                    } catch (err) {
+                        console.error('Error saving GIF:', err);
+                        // Fallback to download
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${fileName}.gif`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        statusText.textContent = `High-quality GIF exported as ${fileName}.gif with ${photos.length} frames`;
+                    }
 
                     loadingOverlay.style.display = 'none';
                     gifExportModal.hide();
-                    statusText.textContent = `High-quality GIF exported as ${fileName}.gif with ${photos.length} frames`;
                 });
 
                 gif.on('progress', function(p) {
@@ -1404,33 +1519,25 @@ document.addEventListener('DOMContentLoaded', function() {
         photoCanvas.style.cursor = 'default';
     }
 
-    function resetApp() {
-        originalTemplate = null;
-        detectedAreas = [];
-        nextAreaId = 1;
+    function resetCanvas() {
+        // Clear photos from all areas
+        detectedAreas.forEach(area => {
+            area.photo = null;
+        });
 
-        templateCtx.clearRect(0, 0, templateCanvas.width, templateCanvas.height);
-        photoCtx.clearRect(0, 0, photoCanvas.width, photoCanvas.height);
+        redrawPhotos();
         updateResultsUI();
 
-        // Stop auto capture if active
-        if (isAutoCaptureActive) {
-            stopAutoCapture();
-            autoCaptureBtn.textContent = 'Auto Capture';
-            autoCaptureBtn.classList.remove('active');
-        }
+        // Update capture overlays
+        updateCaptureOverlay();
+        updateMovableCaptureOverlay();
 
-        // Stop camera if active
-        if (currentStream) {
-            stopCamera();
-        }
+        statusText.textContent = 'Canvas reset. Template ready for new photos.';
+    }
 
-        // Reattach preview if detached
-        if (isPreviewDetached) {
-            toggleDetachPreview();
-        }
-
-        statusText.textContent = 'Application reset. Ready to load template.';
+    function resetApp() {
+        // Reload the page to clear everything
+        window.location.reload();
     }
 
     // Adjust canvas size when window is resized
